@@ -1,0 +1,40 @@
+|-- .expo
+    |-- devices.json
+    |-- README.md
+|-- .gitignore
+|-- app.json
+|-- App.tsx
+|-- assets
+    |-- adaptive-icon.png
+    |-- favicon.png
+    |-- icon.png
+    |-- splash.png
+|-- babel.config.js
+|-- cesconfig.jsonc
+|-- components
+    |-- Container.tsx
+    |-- CustomHeader.tsx
+    |-- EditScreenInfo.tsx
+    |-- ScreenContent.tsx
+|-- eas.json
+|-- eslint.config.js
+|-- global.css
+|-- metro.config.js
+|-- nativewind-env.d.ts
+|-- navigation
+    |-- MainTabNavigator.tsx
+|-- package-lock.json
+|-- package.json
+|-- prettier.config.js
+|-- screens
+    |-- HomeScreen.tsx
+    |-- LoginScreen.tsx
+    |-- OnboardingScreen.tsx
+    |-- ProfileScreen.tsx
+    |-- ResultsListScreen.tsx
+    |-- ResultsScreen.tsx
+    |-- SyllabusScreen.tsx
+    |-- TestListScreen.tsx
+    |-- TestScreen.tsx
+|-- tailwind.config.js
+|-- tsconfig.json
