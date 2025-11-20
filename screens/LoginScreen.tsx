@@ -4,12 +4,15 @@ import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, P
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { AntDesign } from '@expo/vector-icons';
 
 const LoginScreen = () => {
   const [mobileNumber, setMobileNumber] = useState('');
   const [showOtp, setShowOtp] = useState(false);
   const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isPhoneFocused, setIsPhoneFocused] = useState(false);
+  const [isOtpFocused, setIsOtpFocused] = useState(false);
   const navigation = useNavigation<any>();
 
   const handleSendOTP = () => {
@@ -38,7 +41,7 @@ const LoginScreen = () => {
     setTimeout(() => {
       setIsLoading(false);
       if (otp === '1234') {
-        Alert.alert('Success', 'Login successful! Welcome to MCQ Prep 🎉');
+        Alert.alert('Success', 'Login successful! Welcome to ScoreUp 🎉');
         navigation.replace('Main');
       } else {
         Alert.alert('Error', 'Invalid OTP. Please try again.');
@@ -46,11 +49,9 @@ const LoginScreen = () => {
     }, 1000);
   };
 
-  const features = [
-    { icon: 'book-outline', text: '1000+ Practice Questions', color: '#4F46E5' },
-    { icon: 'trophy-outline', text: 'Chapter-wise Tests', color: '#10B981' },
-    { icon: 'analytics-outline', text: 'Performance Analytics', color: '#F59E0B' },
-  ];
+  const handleSocialLogin = (provider: string) => {
+    Alert.alert('Coming Soon', `${provider} login will be available soon!`);
+  };
 
   return (
     <KeyboardAvoidingView 
@@ -63,172 +64,154 @@ const LoginScreen = () => {
         bounces={false}
       >
         <LinearGradient 
-          colors={['#FFFFFF', '#F8F9FF']} 
+          colors={['#759BFD', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#759BFD']} 
+          locations={[0, 0.25, 0.38, 0.44, 0.50, 0.68, 1]}
           style={styles.gradient}
         >
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <View style={styles.iconCircle}>
-                <Ionicons name="school-outline" size={40} color="#4F46E5" />
-              </View>
-              <Text style={styles.logoText}>MCQ Prep</Text>
-              <Text style={styles.tagline}>
-                Your ultimate exam preparation partner
-              </Text>
-            </View>
-
-            {/* Exam Tags */}
-            <View style={styles.examTags}>
-              <View style={styles.examTag}>
-                <Text style={styles.examTagText}>JEE</Text>
-              </View>
-              <View style={styles.examTag}>
-                <Text style={styles.examTagText}>NEET</Text>
-              </View>
-              <View style={styles.examTag}>
-                <Text style={styles.examTagText}>CET</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Main Content */}
           <View style={styles.content}>
-            {/* Welcome Section */}
-            <View style={styles.welcomeSection}>
-              <Text style={styles.welcomeTitle}>
-                {showOtp ? 'Verify Your Number' : 'Welcome Back!'}
-              </Text>
-              <Text style={styles.welcomeSubtitle}>
-                {showOtp 
-                  ? `Enter the code sent to +91 ${mobileNumber}`
-                  : 'Enter your mobile number to get started'
-                }
-              </Text>
-            </View>
-
-            {!showOtp ? (
-              // Mobile Number Input
-              <View style={styles.inputSection}>
-                <Text style={styles.inputLabel}>Mobile Number</Text>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.countryCode}>+91</Text>
-                  <View style={styles.divider} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Enter 10-digit number"
-                    placeholderTextColor="#9CA3AF"
-                    keyboardType="phone-pad"
-                    value={mobileNumber}
-                    onChangeText={setMobileNumber}
-                    maxLength={10}
-                  />
-                  {mobileNumber.length === 10 && (
-                    <Ionicons name="checkmark-circle" size={24} color="#10B981" />
-                  )}
-                </View>
-
-                <TouchableOpacity
-                  style={[
-                    styles.primaryButton,
-                    (mobileNumber.length !== 10 || isLoading) && styles.primaryButtonDisabled
-                  ]}
-                  onPress={handleSendOTP}
-                  disabled={mobileNumber.length !== 10 || isLoading}
-                >
-                  <Text style={styles.primaryButtonText}>
-                    {isLoading ? 'Sending...' : 'Send OTP'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              // OTP Input
-              <View style={styles.inputSection}>
-                <Text style={styles.inputLabel}>Verification Code</Text>
-                <View style={styles.inputContainer}>
-                  <Ionicons name="lock-closed-outline" size={20} color="#6B7280" />
-                  <TextInput
-                    style={styles.otpInput}
-                    placeholder="0000"
-                    placeholderTextColor="#9CA3AF"
-                    keyboardType="number-pad"
-                    value={otp}
-                    onChangeText={setOtp}
-                    maxLength={4}
-                  />
-                  {otp.length === 4 && (
-                    <Ionicons name="checkmark-circle" size={24} color="#10B981" />
-                  )}
-                </View>
-
-                <TouchableOpacity
-                  style={[
-                    styles.primaryButton,
-                    (otp.length !== 4 || isLoading) && styles.primaryButtonDisabled
-                  ]}
-                  onPress={handleVerifyOTP}
-                  disabled={otp.length !== 4 || isLoading}
-                >
-                  <Text style={styles.primaryButtonText}>
-                    {isLoading ? 'Verifying...' : 'Verify & Continue'}
-                  </Text>
-                </TouchableOpacity>
-
-                <View style={styles.otpActions}>
-                  <TouchableOpacity 
-                    onPress={() => Alert.alert('OTP Resent', 'New code sent successfully!')}
-                  >
-                    <Text style={styles.linkText}>Resend OTP</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    onPress={() => {
-                      setShowOtp(false);
-                      setOtp('');
-                    }}
-                  >
-                    <Text style={styles.linkTextSecondary}>Change Number</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-
-            {/* Features Section */}
-            <View style={styles.featuresSection}>
-              <Text style={styles.featuresTitle}>Why Choose MCQ Prep?</Text>
-              {features.map((feature, index) => (
-                <View key={index} style={styles.featureItem}>
-                  <View style={[styles.featureIcon, { backgroundColor: `${feature.color}15` }]}>
-                    <Ionicons name={feature.icon} size={20} color={feature.color} />
+            {/* Card Container */}
+            <View style={styles.card}>
+              {/* Logo Section */}
+              <View style={styles.logoContainer}>
+                {/* ScoreUp Logo */}
+                <View style={styles.logoWrapper}>
+                  <View style={styles.bookIcon}>
+                    <View style={styles.bookLeftPage}>
+                      <View style={styles.bookLeftStripe1} />
+                      <View style={styles.bookLeftStripe2} />
+                    </View>
+                    <View style={styles.bookRightPage}>
+                      <View style={styles.bookRightStripe} />
+                    </View>
                   </View>
-                  <Text style={styles.featureText}>{feature.text}</Text>
                 </View>
-              ))}
-            </View>
-
-            {/* Pricing Card */}
-            <View style={styles.pricingCard}>
-              <View style={styles.pricingHeader}>
-                <View style={styles.pricingInfo}>
-                  <Text style={styles.pricingTitle}>One-Time Payment</Text>
-                  <Text style={styles.pricingSubtitle}>Lifetime Access</Text>
-                </View>
-                <View style={styles.priceBadge}>
-                  <Text style={styles.priceText}>₹99</Text>
-                </View>
+                <Text style={styles.logoText}>ScoreUp</Text>
               </View>
-              <View style={styles.pricingFooter}>
-                <Ionicons name="shield-checkmark-outline" size={16} color="#6B7280" />
-                <Text style={styles.pricingNote}>Secure payment • No hidden charges</Text>
-              </View>
-            </View>
 
-            {/* Terms */}
-            <Text style={styles.termsText}>
-              By continuing, you agree to our{' '}
-              <Text style={styles.termsLink}>Terms of Service</Text>
-              {' '}and{' '}
-              <Text style={styles.termsLink}>Privacy Policy</Text>
-            </Text>
+              {/* Title Section */}
+              <View style={styles.titleSection}>
+                <Text style={styles.mainTitle}>MCQ Preparation</Text>
+                <Text style={styles.subtitle}>Your Smart Exam Success Partner</Text>
+              </View>
+
+              {/* Login Form */}
+              {!showOtp ? (
+                <View style={styles.formSection}>
+                  <Text style={styles.formTitle}>Login</Text>
+                  <Text style={styles.formSubtitle}>Enter your phone number to continue!</Text>
+                  
+                  <View style={[
+                    styles.inputContainer,
+                    isPhoneFocused && styles.inputContainerFocused
+                  ]}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Phone number"
+                      placeholderTextColor="#C7C7C7"
+                      keyboardType="phone-pad"
+                      value={mobileNumber}
+                      onChangeText={setMobileNumber}
+                      onFocus={() => setIsPhoneFocused(true)}
+                      onBlur={() => setIsPhoneFocused(false)}
+                      maxLength={10}
+                    />
+                  </View>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.continueButton,
+                      (mobileNumber.length !== 10 || isLoading) && styles.continueButtonDisabled
+                    ]}
+                    onPress={handleSendOTP}
+                    disabled={mobileNumber.length !== 10 || isLoading}
+                  >
+                    <Text style={styles.continueButtonText}>
+                      {isLoading ? 'Sending...' : 'Continue'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Social Login */}
+                  <Text style={styles.orText}>Or login with</Text>
+                  
+                  <View style={styles.socialButtonsContainer}>
+                    <TouchableOpacity 
+                      style={styles.socialButton}
+                      onPress={() => handleSocialLogin('Apple')}
+                    >
+                      <AntDesign name="apple1" size={24} color="#000000" />
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity 
+                      style={styles.socialButton}
+                      onPress={() => handleSocialLogin('Google')}
+                    >
+                      <AntDesign name="google" size={24} color="#DB4437" />
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity 
+                      style={styles.socialButton}
+                      onPress={() => handleSocialLogin('Email')}
+                    >
+                      <Ionicons name="mail" size={24} color="#5B8DEE" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                // OTP Verification
+                <View style={styles.formSection}>
+                  <Text style={styles.formTitle}>Verify OTP</Text>
+                  <Text style={styles.formSubtitle}>
+                    Enter the code sent to +91 {mobileNumber}
+                  </Text>
+                  
+                  <View style={[
+                    styles.inputContainer,
+                    isOtpFocused && styles.inputContainerFocused
+                  ]}>
+                    <TextInput
+                      style={styles.otpInput}
+                      placeholder="0000"
+                      placeholderTextColor="#C7C7C7"
+                      keyboardType="number-pad"
+                      value={otp}
+                      onChangeText={setOtp}
+                      onFocus={() => setIsOtpFocused(true)}
+                      onBlur={() => setIsOtpFocused(false)}
+                      maxLength={4}
+                    />
+                  </View>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.continueButton,
+                      (otp.length !== 4 || isLoading) && styles.continueButtonDisabled
+                    ]}
+                    onPress={handleVerifyOTP}
+                    disabled={otp.length !== 4 || isLoading}
+                  >
+                    <Text style={styles.continueButtonText}>
+                      {isLoading ? 'Verifying...' : 'Verify & Continue'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <View style={styles.otpActions}>
+                    <TouchableOpacity 
+                      onPress={() => Alert.alert('OTP Resent', 'New code sent successfully!')}
+                    >
+                      <Text style={styles.linkText}>Resend OTP</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      onPress={() => {
+                        setShowOtp(false);
+                        setOtp('');
+                      }}
+                    >
+                      <Text style={styles.linkText}>Change Number</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            </View>
           </View>
         </LinearGradient>
       </ScrollView>
@@ -239,283 +222,195 @@ const LoginScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#759BFD',
   },
   scrollContent: {
     flexGrow: 1,
   },
   gradient: {
     flex: 1,
-  },
-  header: {
-    paddingTop: 60,
-    paddingHorizontal: 24,
-    paddingBottom: 32,
-    alignItems: 'center',
-  },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#EEF2FF',
     justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  logoText: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#111827',
-    letterSpacing: -0.5,
-    marginBottom: 8,
-  },
-  tagline: {
-    fontSize: 15,
-    color: '#6B7280',
-    textAlign: 'center',
-  },
-  examTags: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  examTag: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  examTagText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#4F46E5',
+    paddingHorizontal: 20,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
-  },
-  welcomeSection: {
-    marginBottom: 32,
-  },
-  welcomeTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
-    letterSpacing: -0.5,
-  },
-  welcomeSubtitle: {
-    fontSize: 15,
-    color: '#6B7280',
-    lineHeight: 22,
-  },
-  inputSection: {
-    marginBottom: 32,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 4,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  countryCode: {
-    fontSize: 16,
-    color: '#6B7280',
-    fontWeight: '600',
-  },
-  divider: {
-    width: 1,
-    height: 24,
-    backgroundColor: '#E5E7EB',
-    marginHorizontal: 12,
-  },
-  input: {
-    flex: 1,
-    paddingVertical: 16,
-    fontSize: 16,
-    color: '#111827',
-  },
-  otpInput: {
-    flex: 1,
-    paddingVertical: 16,
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#111827',
-    textAlign: 'center',
-    letterSpacing: 8,
-    marginLeft: 8,
-  },
-  primaryButton: {
-    backgroundColor: '#4F46E5',
-    paddingVertical: 18,
-    borderRadius: 16,
-    alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#4F46E5',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    paddingVertical: 40,
   },
-  primaryButtonDisabled: {
-    backgroundColor: '#E5E7EB',
-    shadowOpacity: 0,
-    elevation: 0,
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 32,
+    padding: 32,
   },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '600',
-    letterSpacing: 0.2,
-  },
-  otpActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 16,
-  },
-  linkText: {
-    color: '#4F46E5',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  linkTextSecondary: {
-    color: '#6B7280',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  featuresSection: {
+  
+  // Logo Styles
+  logoContainer: {
+    alignItems: 'center',
     marginBottom: 24,
   },
-  featuresTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 16,
-  },
-  featureItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  featureIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  featureText: {
-    fontSize: 14,
-    color: '#374151',
-    fontWeight: '500',
-    flex: 1,
-  },
-  pricingCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-    borderWidth: 2,
-    borderColor: '#EEF2FF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  pricingHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  logoWrapper: {
     marginBottom: 12,
   },
-  pricingInfo: {
-    flex: 1,
+  bookIcon: {
+    width: 80,
+    height: 70,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  pricingTitle: {
-    fontSize: 16,
+  bookLeftPage: {
+    width: 32,
+    height: 60,
+    backgroundColor: '#2463EB',
+    borderTopLeftRadius: 4,
+    borderBottomLeftRadius: 4,
+    justifyContent: 'space-evenly',
+    paddingHorizontal: 6,
+  },
+  bookLeftStripe1: {
+    width: '100%',
+    height: 3,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 2,
+  },
+  bookLeftStripe2: {
+    width: '100%',
+    height: 3,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 2,
+  },
+  bookRightPage: {
+    width: 32,
+    height: 60,
+    backgroundColor: '#F97316',
+    borderTopRightRadius: 4,
+    borderBottomRightRadius: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bookRightStripe: {
+    width: '70%',
+    height: 3,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 2,
+  },
+  logoText: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1E40AF',
+    letterSpacing: 0.5,
+  },
+  
+  // Title Section
+  titleSection: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  mainTitle: {
+    fontSize: 20,
     fontWeight: '700',
     color: '#111827',
     marginBottom: 4,
   },
-  pricingSubtitle: {
-    fontSize: 13,
+  subtitle: {
+    fontSize: 14,
     color: '#6B7280',
+    textAlign: 'center',
   },
-  priceBadge: {
-    backgroundColor: '#4F46E5',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
+  
+  // Form Section
+  formSection: {
+    width: '100%',
   },
-  priceText: {
-    fontSize: 20,
+  formTitle: {
+    fontSize: 18,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#111827',
+    marginBottom: 4,
+    textAlign: 'left',
   },
-  pricingFooter: {
-    flexDirection: 'row',
+  formSubtitle: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    marginBottom: 24,
+    textAlign: 'left',
+  },
+  inputContainer: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    marginBottom: 20,
+  },
+  inputContainerFocused: {
+    borderColor: '#5B8DEE',
+    borderWidth: 2,
+    backgroundColor: '#FFFFFF',
+  },
+  input: {
+    paddingVertical: 14,
+    fontSize: 15,
+    color: '#111827',
+  },
+  otpInput: {
+    paddingVertical: 14,
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#111827',
+    textAlign: 'center',
+    letterSpacing: 4,
+  },
+  continueButton: {
+    backgroundColor: '#7CA4F5',
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    justifyContent: 'center',
+    marginBottom: 20,
   },
-  pricingNote: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginLeft: 6,
+  continueButtonDisabled: {
+    backgroundColor: '#D1D5DB',
   },
-  termsText: {
-    fontSize: 12,
+  continueButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  
+  // Social Login
+  orText: {
+    fontSize: 13,
     color: '#9CA3AF',
     textAlign: 'center',
-    lineHeight: 18,
-    marginBottom: 32,
+    marginBottom: 16,
   },
-  termsLink: {
-    color: '#4F46E5',
+  socialButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 20,
+  },
+  socialButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  
+  // OTP Actions
+  otpActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 12,
+  },
+  linkText: {
+    color: '#5B8DEE',
+    fontSize: 14,
     fontWeight: '600',
   },
 });

@@ -2,6 +2,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 const SyllabusScreen = () => {
@@ -13,7 +14,7 @@ const SyllabusScreen = () => {
       title: 'JEE Main & Advanced',
       subtitle: 'Engineering Entrance',
       icon: 'calculator-outline',
-      color: '#4F46E5',
+      color: '#5B8DEE',
       subjects: ['Physics', 'Chemistry', 'Mathematics'],
       totalTests: 450,
       students: '2.5M+',
@@ -44,10 +45,10 @@ const SyllabusScreen = () => {
   ];
 
   const features = [
-    { icon: 'flash-outline', text: 'Chapter Tests', color: '#F59E0B' },
-    { icon: 'trophy-outline', text: 'Mock Exams', color: '#8B5CF6' },
-    { icon: 'time-outline', text: 'Timed Practice', color: '#3B82F6' },
-    { icon: 'analytics-outline', text: 'Analytics', color: '#10B981' },
+    { icon: 'document-text', text: 'Chapter Tests', color: '#5B8DEE' },
+    { icon: 'trophy', text: 'Mock Exams', color: '#8B5CF6' },
+    { icon: 'time', text: 'Timed Practice', color: '#F59E0B' },
+    { icon: 'analytics', text: 'Analytics', color: '#10B981' },
   ];
 
   const handleSyllabusSelect = (syllabus: string) => {
@@ -56,29 +57,34 @@ const SyllabusScreen = () => {
 
   return (
     <View style={styles.container}>
+      {/* Fixed Compact Header */}
+      <LinearGradient colors={['#5B8DEE', '#5B8DEE']} style={styles.header}>
+        <View style={styles.headerContent}>
+          <View style={styles.headerLeft}>
+            <View style={styles.iconCircle}>
+              <Ionicons name="school" size={28} color="#5B8DEE" />
+            </View>
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.headerTitle}>Choose Your Path</Text>
+              <Text style={styles.headerSubtitle}>Select exam to practice</Text>
+            </View>
+          </View>
+        </View>
+      </LinearGradient>
+
+      {/* Scrollable Content */}
       <ScrollView 
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerContent}>
-            <View style={styles.iconCircle}>
-              <Ionicons name="school-outline" size={40} color="#4F46E5" />
-            </View>
-            <Text style={styles.headerTitle}>Choose Your Path</Text>
-            <Text style={styles.headerSubtitle}>
-              Select your exam to start practicing
-            </Text>
-          </View>
-
-          {/* Features Row */}
+        {/* Features Row */}
+        <View style={styles.featuresSection}>
           <View style={styles.featuresRow}>
             {features.map((feature, index) => (
               <View key={index} style={styles.featureItem}>
-                <View style={[styles.featureIcon, { backgroundColor: `${feature.color}15` }]}>
-                  <Ionicons name={feature.icon} size={18} color={feature.color} />
+                <View style={[styles.featureIconCircle, { backgroundColor: `${feature.color}15` }]}>
+                  <Ionicons name={feature.icon} size={20} color={feature.color} />
                 </View>
                 <Text style={styles.featureText}>{feature.text}</Text>
               </View>
@@ -95,90 +101,129 @@ const SyllabusScreen = () => {
               onPress={() => handleSyllabusSelect(option.id)}
               activeOpacity={0.7}
             >
-              {/* Card Header */}
-              <View style={styles.cardHeader}>
-                <View style={styles.cardHeaderLeft}>
-                  <View style={[styles.cardIcon, { backgroundColor: `${option.color}15` }]}>
-                    <Ionicons name={option.icon} size={32} color={option.color} />
-                  </View>
-                  <View style={styles.cardTitleContainer}>
-                    <Text style={styles.cardTitle}>{option.title}</Text>
-                    <Text style={styles.cardSubtitle}>{option.subtitle}</Text>
-                  </View>
-                </View>
-                <View style={styles.arrowButton}>
-                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-                </View>
-              </View>
-
-              {/* Description */}
-              <Text style={styles.cardDescription}>{option.description}</Text>
-
-              {/* Subjects Tags */}
-              <View style={styles.subjectsContainer}>
-                {option.subjects.map((subject, idx) => (
-                  <View 
-                    key={idx} 
-                    style={[styles.subjectTag, { backgroundColor: `${option.color}10` }]}
-                  >
-                    <Text style={[styles.subjectText, { color: option.color }]}>
-                      {subject}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-
-              {/* Stats */}
-              <View style={styles.statsRow}>
-                <View style={styles.statItem}>
-                  <Ionicons name="document-text-outline" size={16} color="#6B7280" />
-                  <Text style={styles.statText}>{option.totalTests} Tests</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Ionicons name="people-outline" size={16} color="#6B7280" />
-                  <Text style={styles.statText}>{option.students} Students</Text>
-                </View>
-              </View>
-
-              {/* Action Button */}
-              <TouchableOpacity 
-                style={[styles.startButton, { backgroundColor: option.color }]}
-                onPress={() => handleSyllabusSelect(option.id)}
+              <LinearGradient
+                colors={['#FFFFFF', '#FAFBFF']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.cardGradient}
               >
-                <Text style={styles.startButtonText}>Start Practicing</Text>
-                <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-              </TouchableOpacity>
+                {/* Card Header */}
+                <View style={styles.cardHeader}>
+                  <View style={styles.cardHeaderLeft}>
+                    <LinearGradient
+                      colors={[option.color, `${option.color}CC`]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.cardIcon}
+                    >
+                      <Ionicons name={option.icon} size={32} color="#FFFFFF" />
+                    </LinearGradient>
+                    <View style={styles.cardTitleContainer}>
+                      <Text style={styles.cardTitle}>{option.title}</Text>
+                      <Text style={styles.cardSubtitle}>{option.subtitle}</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Description */}
+                <Text style={styles.cardDescription}>{option.description}</Text>
+
+                {/* Subjects Tags */}
+                <View style={styles.subjectsContainer}>
+                  {option.subjects.map((subject, idx) => (
+                    <View 
+                      key={idx} 
+                      style={styles.subjectTag}
+                    >
+                      <Ionicons name="checkmark-circle" size={14} color={option.color} />
+                      <Text style={styles.subjectText}>
+                        {subject}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+
+                {/* Stats */}
+                <View style={styles.statsRow}>
+                  <View style={styles.statItem}>
+                    <View style={styles.statIconCircle}>
+                      <Ionicons name="document-text" size={14} color="#5B8DEE" />
+                    </View>
+                    <Text style={styles.statText}>{option.totalTests} Tests</Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <View style={styles.statIconCircle}>
+                      <Ionicons name="people" size={14} color="#10B981" />
+                    </View>
+                    <Text style={styles.statText}>{option.students} Students</Text>
+                  </View>
+                </View>
+
+                {/* Action Button */}
+                <TouchableOpacity 
+                  style={styles.startButtonWrapper}
+                  onPress={() => handleSyllabusSelect(option.id)}
+                >
+                  <LinearGradient
+                    colors={[option.color, `${option.color}DD`]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.startButton}
+                  >
+                    <Text style={styles.startButtonText}>Start Practicing</Text>
+                    <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+                  </LinearGradient>
+                </TouchableOpacity>
+              </LinearGradient>
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Bottom Info Card */}
         <View style={styles.infoCard}>
-          <View style={styles.infoCardHeader}>
-            <View style={styles.infoIcon}>
-              <Ionicons name="information-circle-outline" size={24} color="#4F46E5" />
+          <LinearGradient
+            colors={['#FFFFFF', '#F0F4FF']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.infoCardGradient}
+          >
+            <View style={styles.infoCardHeader}>
+              <LinearGradient
+                colors={['#5B8DEE', '#7BA7F7']}
+                style={styles.infoIcon}
+              >
+                <Ionicons name="information-circle" size={24} color="#FFFFFF" />
+              </LinearGradient>
+              <Text style={styles.infoTitle}>Why Choose MCQ Prep?</Text>
             </View>
-            <Text style={styles.infoTitle}>Why Choose MCQ Prep?</Text>
-          </View>
-          
-          <View style={styles.benefitsList}>
-            <View style={styles.benefitItem}>
-              <Ionicons name="checkmark-circle" size={20} color="#10B981" />
-              <Text style={styles.benefitText}>Latest exam pattern questions</Text>
+            
+            <View style={styles.benefitsList}>
+              <View style={styles.benefitItem}>
+                <View style={styles.benefitIconCircle}>
+                  <Ionicons name="checkmark" size={16} color="#10B981" />
+                </View>
+                <Text style={styles.benefitText}>Latest exam pattern questions</Text>
+              </View>
+              <View style={styles.benefitItem}>
+                <View style={styles.benefitIconCircle}>
+                  <Ionicons name="checkmark" size={16} color="#10B981" />
+                </View>
+                <Text style={styles.benefitText}>Detailed solutions & explanations</Text>
+              </View>
+              <View style={styles.benefitItem}>
+                <View style={styles.benefitIconCircle}>
+                  <Ionicons name="checkmark" size={16} color="#10B981" />
+                </View>
+                <Text style={styles.benefitText}>Performance tracking & analytics</Text>
+              </View>
+              <View style={styles.benefitItem}>
+                <View style={styles.benefitIconCircle}>
+                  <Ionicons name="checkmark" size={16} color="#10B981" />
+                </View>
+                <Text style={styles.benefitText}>One-time payment of ₹99 only</Text>
+              </View>
             </View>
-            <View style={styles.benefitItem}>
-              <Ionicons name="checkmark-circle" size={20} color="#10B981" />
-              <Text style={styles.benefitText}>Detailed solutions & explanations</Text>
-            </View>
-            <View style={styles.benefitItem}>
-              <Ionicons name="checkmark-circle" size={20} color="#10B981" />
-              <Text style={styles.benefitText}>Performance tracking & analytics</Text>
-            </View>
-            <View style={styles.benefitItem}>
-              <Ionicons name="checkmark-circle" size={20} color="#10B981" />
-              <Text style={styles.benefitText}>One-time payment of ₹99 only</Text>
-            </View>
-          </View>
+          </LinearGradient>
         </View>
 
         {/* Bottom Spacing */}
@@ -193,106 +238,99 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
+  header: {
+    paddingTop: 60,
+    paddingHorizontal: 24,
+    paddingBottom: 16,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  iconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontWeight: '500',
+  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     paddingBottom: 100,
   },
-  header: {
+  featuresSection: {
     backgroundColor: '#FFFFFF',
-    paddingTop: 60,
+    paddingVertical: 20,
     paddingHorizontal: 24,
-    paddingBottom: 24,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  headerContent: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#EEF2FF',
-    justifyContent: 'center',
-    alignItems: 'center',
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#111827',
-    letterSpacing: -0.5,
-    marginBottom: 8,
-  },
-  headerSubtitle: {
-    fontSize: 15,
-    color: '#6B7280',
-    textAlign: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
   featuresRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    flexWrap: 'wrap',
-    gap: 12,
+    gap: 8,
   },
   featureItem: {
     alignItems: 'center',
-    width: 70,
+    flex: 1,
   },
-  featureIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  featureIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   featureText: {
     fontSize: 11,
-    color: '#6B7280',
+    color: '#374151',
     textAlign: 'center',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   cardsContainer: {
     paddingHorizontal: 24,
-    paddingTop: 24,
   },
   syllabusCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: 18,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 3,
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: '#E5E7EB',
+  },
+  cardGradient: {
+    padding: 20,
   },
   cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   cardHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
   },
   cardIcon: {
     width: 64,
@@ -300,7 +338,7 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 14,
   },
   cardTitleContainer: {
     flex: 1,
@@ -310,26 +348,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111827',
     marginBottom: 4,
-    letterSpacing: -0.3,
   },
   cardSubtitle: {
     fontSize: 13,
     color: '#6B7280',
-    fontWeight: '500',
-  },
-  arrowButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
+    fontWeight: '600',
   },
   cardDescription: {
     fontSize: 14,
     color: '#6B7280',
     lineHeight: 20,
     marginBottom: 16,
+    fontWeight: '500',
   },
   subjectsContainer: {
     flexDirection: 'row',
@@ -338,13 +368,18 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   subjectTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 10,
+    backgroundColor: '#F3F4F6',
+    gap: 4,
   },
   subjectText: {
     fontSize: 12,
     fontWeight: '600',
+    color: '#374151',
   },
   statsRow: {
     flexDirection: 'row',
@@ -352,61 +387,62 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
-    gap: 20,
+    gap: 16,
   },
   statItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
+  statIconCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#EEF2FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   statText: {
     fontSize: 13,
-    color: '#6B7280',
-    fontWeight: '500',
+    color: '#374151',
+    fontWeight: '600',
+  },
+  startButtonWrapper: {
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   startButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
-    borderRadius: 14,
     gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
   },
   startButtonText: {
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '600',
-    letterSpacing: 0.2,
+    fontWeight: '700',
   },
   infoCard: {
     marginHorizontal: 24,
     marginTop: 8,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    borderRadius: 18,
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: '#E5E7EB',
+  },
+  infoCardGradient: {
+    padding: 20,
   },
   infoCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 18,
   },
   infoIcon: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#EEF2FF',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -425,11 +461,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
+  benefitIconCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#D1FAE5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   benefitText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#374151',
     flex: 1,
     lineHeight: 20,
+    fontWeight: '500',
   },
   bottomSpacing: {
     height: 20,

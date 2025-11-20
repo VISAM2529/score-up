@@ -3,13 +3,15 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { View, Platform, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HomeScreen from '../screens/HomeScreen';
 import SyllabusScreen from '../screens/SyllabusScreen';
-import ResultsListScreen from '../screens/ResultsListScreen';
+// import ResultsListScreen from '../screens/ResultsListScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import TestListScreen from '../screens/TestListScreen';
 import TestScreen from '../screens/TestScreen';
 import ResultsScreen from '../screens/ResultsScreen';
+import ResultDetailScreen from 'screens/ResultDetailScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -47,12 +49,12 @@ const TAB_CONFIG = {
 
 // Theme colors matching the app design
 const COLORS = {
-  primary: '#4F46E5',
+  primary: '#5B8DEE',
   primaryLight: '#EEF2FF',
   textPrimary: '#111827',
   textSecondary: '#9CA3AF',
   background: '#FFFFFF',
-  border: '#F3F4F6',
+  border: '#E5E7EB',
   shadow: '#000000',
 };
 
@@ -69,13 +71,16 @@ function TestsStack() {
 function ResultsStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="ResultsList" component={ResultsListScreen} />
+      {/* <Stack.Screen name="ResultsList" component={ResultsListScreen} /> */}
       <Stack.Screen name="Results" component={ResultsScreen} />
+      <Stack.Screen name="ResultDetail" component={ResultDetailScreen} />
     </Stack.Navigator>
   );
 }
 
 export default function MainTabNavigator() {
+  const insets = useSafeAreaInsets();
+  
   const getTabBarIcon = (routeName, focused, color, size) => {
     const config = TAB_CONFIG[routeName];
     if (!config) return null;
@@ -97,7 +102,11 @@ export default function MainTabNavigator() {
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.textSecondary,
         tabBarLabelStyle: styles.tabBarLabel,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: {
+          ...styles.tabBar,
+          height: 65 + insets.bottom,
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
+        },
         tabBarItemStyle: styles.tabBarItem,
         headerShown: false,
         tabBarHideOnKeyboard: true,
@@ -137,28 +146,16 @@ export default function MainTabNavigator() {
 
 const styles = StyleSheet.create({
   tabBar: {
-    height: Platform.OS === 'ios' ? 88 : 68,
-    marginBottom: 24,
-    paddingTop: 4,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 16,
+    paddingTop: 8,
     paddingHorizontal: 16,
     backgroundColor: COLORS.background,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
-    ...Platform.select({
-      ios: {
-        shadowColor: COLORS.shadow,
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
+    elevation: 0,
+    shadowOpacity: 0,
   },
   tabBarLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
     marginTop: 4,
     letterSpacing: 0.2,

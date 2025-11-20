@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, FlatList, ScrollView, StyleSheet } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 interface Test {
@@ -71,15 +72,6 @@ const TestListScreen = () => {
     }
   };
 
-  const getSyllabusColor = () => {
-    switch(syllabus) {
-      case 'JEE': return '#4F46E5';
-      case 'NEET': return '#EC4899';
-      case 'CET': return '#10B981';
-      default: return '#4F46E5';
-    }
-  };
-
   const stats = {
     total: allTests.length,
     completed: allTests.filter(t => t.attempted).length,
@@ -90,77 +82,68 @@ const TestListScreen = () => {
     ),
   };
 
-  const syllabusColor = getSyllabusColor();
-
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: '#FFFFFF' }]}>
-        <TouchableOpacity 
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        >
-          <Ionicons name="arrow-back" size={24} color="#374151" />
-        </TouchableOpacity>
-        
-        <View style={styles.headerContent}>
-          <View style={[styles.headerIcon, { backgroundColor: `${syllabusColor}15` }]}>
-            <Ionicons name="book-outline" size={28} color={syllabusColor} />
-          </View>
+      <LinearGradient colors={['#5B8DEE', '#5B8DEE']} style={styles.header}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity 
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle}>{syllabus} Tests</Text>
-            <Text style={styles.headerSubtitle}>Choose your test and start practicing</Text>
+            <Text style={styles.headerSubtitle}>{stats.total} tests available</Text>
           </View>
-        </View>
 
-        {/* Stats Row */}
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>Total</Text>
-            <Text style={styles.statValue}>{stats.total}</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>Completed</Text>
-            <Text style={styles.statValue}>{stats.completed}</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>Avg Score</Text>
-            <Text style={styles.statValue}>{stats.avgScore}%</Text>
+          <View style={styles.headerStats}>
+            <View style={styles.miniStat}>
+              <Text style={styles.miniStatValue}>{stats.completed}</Text>
+              <Text style={styles.miniStatLabel}>Done</Text>
+            </View>
+            <View style={styles.miniStat}>
+              <Text style={styles.miniStatValue}>{stats.avgScore}%</Text>
+              <Text style={styles.miniStatLabel}>Score</Text>
+            </View>
           </View>
         </View>
-      </View>
+      </LinearGradient>
 
       {/* Filter Tabs */}
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        style={styles.filterScrollView}
-        contentContainerStyle={styles.filterContainer}
-      >
-        {filters.map((filter) => (
-          <TouchableOpacity
-            key={filter}
-            onPress={() => setSelectedFilter(filter)}
-            style={[
-              styles.filterButton,
-              selectedFilter === filter 
-                ? [styles.filterButtonActive, { backgroundColor: syllabusColor }]
-                : styles.filterButtonInactive
-            ]}
-          >
-            <Text 
-              style={[
-                styles.filterButtonText,
-                selectedFilter === filter 
-                  ? styles.filterButtonTextActive 
-                  : styles.filterButtonTextInactive
-              ]}
+      <View style={styles.filterSection}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterContainer}
+        >
+          {filters.map((filter) => (
+            <TouchableOpacity
+              key={filter}
+              onPress={() => setSelectedFilter(filter)}
+              style={styles.filterButtonWrapper}
             >
-              {filter}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+              {selectedFilter === filter ? (
+                <LinearGradient
+                  colors={['#5B8DEE', '#7BA7F7']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.filterButtonActive}
+                >
+                  <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" />
+                  <Text style={styles.filterButtonTextActive}>{filter}</Text>
+                </LinearGradient>
+              ) : (
+                <View style={styles.filterButtonInactive}>
+                  <Text style={styles.filterButtonTextInactive}>{filter}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
       {/* Tests List */}
       <FlatList
@@ -174,84 +157,102 @@ const TestListScreen = () => {
             onPress={() => handleTestSelect(item)}
             activeOpacity={0.7}
           >
-            {/* Test Header */}
-            <View style={styles.testHeader}>
-              <View style={[styles.testIconCircle, { backgroundColor: `${syllabusColor}15` }]}>
-                <Ionicons name={item.icon} size={24} color={syllabusColor} />
+            <LinearGradient
+              colors={['#FFFFFF', '#FAFBFF']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.testCardGradient}
+            >
+              {/* Test Header */}
+              <View style={styles.testHeader}>
+                <LinearGradient
+                  colors={['#5B8DEE', '#7BA7F7']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.testIconCircle}
+                >
+                  <Ionicons name={item.icon} size={24} color="#FFFFFF" />
+                </LinearGradient>
+                <View style={styles.testHeaderText}>
+                  <View style={styles.testTitleRow}>
+                    <Text style={styles.testName} numberOfLines={1}>{item.name}</Text>
+                    {item.attempted && (
+                      <View style={styles.attemptedBadge}>
+                        <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+                      </View>
+                    )}
+                  </View>
+                  <View style={styles.testSubInfo}>
+                    <Text style={styles.testSubject}>{item.subject}</Text>
+                    <View style={styles.dot} />
+                    <Text style={styles.testChapter} numberOfLines={1}>{item.chapter}</Text>
+                  </View>
+                </View>
               </View>
-              <View style={styles.testHeaderText}>
-                <View style={styles.testTitleRow}>
-                  <Text style={styles.testName} numberOfLines={1}>{item.name}</Text>
-                  {item.attempted && (
-                    <View style={styles.attemptedBadge}>
-                      <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+
+              {/* Test Info */}
+              <View style={styles.testMeta}>
+                <View style={styles.testMetaItem}>
+                  <View style={styles.metaIconCircle}>
+                    <Ionicons name="document-text" size={12} color="#5B8DEE" />
+                  </View>
+                  <Text style={styles.testMetaText}>{item.questions} Questions</Text>
+                </View>
+                <View style={styles.testMetaItem}>
+                  <View style={styles.metaIconCircle}>
+                    <Ionicons name="time" size={12} color="#5B8DEE" />
+                  </View>
+                  <Text style={styles.testMetaText}>{item.duration} min</Text>
+                </View>
+                <View style={styles.testMetaItem}>
+                  <View style={styles.metaIconCircle}>
+                    <Ionicons name="star" size={12} color="#F59E0B" />
+                  </View>
+                  <Text style={styles.testMetaText}>{item.points} pts</Text>
+                </View>
+              </View>
+
+              {/* Bottom Section */}
+              <View style={styles.testFooter}>
+                <View style={styles.testFooterLeft}>
+                  <View 
+                    style={[
+                      styles.difficultyBadge, 
+                      { backgroundColor: getDifficultyColor(item.difficulty) }
+                    ]}
+                  >
+                    <Text style={styles.difficultyText}>{item.difficulty}</Text>
+                  </View>
+                  <View style={styles.typeBadge}>
+                    <Text style={styles.typeText}>{item.type}</Text>
+                  </View>
+                  {item.attempted && item.score && (
+                    <View style={styles.scoreBadge}>
+                      <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+                      <Text style={styles.scoreValue}>{item.score}%</Text>
                     </View>
                   )}
                 </View>
-                <View style={styles.testSubInfo}>
-                  <Text style={styles.testSubject}>{item.subject}</Text>
-                  <View style={styles.dot} />
-                  <Text style={styles.testChapter} numberOfLines={1}>{item.chapter}</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Test Info */}
-            <View style={styles.testMeta}>
-              <View style={styles.testMetaItem}>
-                <Ionicons name="document-text-outline" size={14} color="#6B7280" />
-                <Text style={styles.testMetaText}>{item.questions} Qs</Text>
-              </View>
-              <View style={styles.testMetaItem}>
-                <Ionicons name="time-outline" size={14} color="#6B7280" />
-                <Text style={styles.testMetaText}>{item.duration} min</Text>
-              </View>
-              <View style={styles.testMetaItem}>
-                <Ionicons name="star" size={14} color="#F59E0B" />
-                <Text style={styles.testMetaText}>{item.points} pts</Text>
-              </View>
-              <View 
-                style={[
-                  styles.difficultyBadge, 
-                  { backgroundColor: `${getDifficultyColor(item.difficulty)}15` }
-                ]}
-              >
-                <Text 
-                  style={[
-                    styles.difficultyText, 
-                    { color: getDifficultyColor(item.difficulty) }
-                  ]}
+                <TouchableOpacity 
+                  style={styles.startButton}
+                  onPress={() => handleTestSelect(item)}
                 >
-                  {item.difficulty}
-                </Text>
-              </View>
-            </View>
-
-            {/* Bottom Section */}
-            <View style={styles.testFooter}>
-              <View style={styles.testFooterLeft}>
-                <View style={[styles.typeBadge, { backgroundColor: `${syllabusColor}15` }]}>
-                  <Text style={[styles.typeText, { color: syllabusColor }]}>{item.type}</Text>
-                </View>
-                {item.attempted && item.score && (
-                  <Text style={styles.scoreText}>
-                    Score: <Text style={styles.scoreValue}>{item.score}%</Text>
+                  <Text style={styles.startButtonText}>
+                    {item.attempted ? 'Retake' : 'Start'}
                   </Text>
-                )}
+                  <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+                </TouchableOpacity>
               </View>
-              <View style={[styles.startButton, { backgroundColor: syllabusColor }]}>
-                <Text style={styles.startButtonText}>
-                  {item.attempted ? 'Retake' : 'Start'}
-                </Text>
-              </View>
-            </View>
+            </LinearGradient>
           </TouchableOpacity>
         )}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Ionicons name="document-outline" size={64} color="#D1D5DB" />
+            <View style={styles.emptyIconCircle}>
+              <Ionicons name="document-outline" size={48} color="#9CA3AF" />
+            </View>
             <Text style={styles.emptyStateTitle}>No tests found</Text>
-            <Text style={styles.emptyStateSubtitle}>Try a different filter</Text>
+            <Text style={styles.emptyStateSubtitle}>Try selecting a different filter</Text>
           </View>
         }
       />
@@ -267,135 +268,121 @@ const styles = StyleSheet.create({
   header: {
     paddingTop: 60,
     paddingHorizontal: 24,
-    paddingBottom: 24,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
+    paddingBottom: 16,
   },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  headerContent: {
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    gap: 12,
   },
-  headerIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
   },
   headerTextContainer: {
     flex: 1,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
-    color: '#111827',
-    letterSpacing: -0.5,
-    marginBottom: 4,
+    color: '#FFFFFF',
+    marginBottom: 2,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontWeight: '500',
   },
-  statsRow: {
+  headerStats: {
     flexDirection: 'row',
     gap: 12,
   },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
+  miniStat: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    minWidth: 60,
   },
-  statLabel: {
-    fontSize: 11,
-    color: '#6B7280',
-    marginBottom: 4,
-    fontWeight: '500',
-  },
-  statValue: {
-    fontSize: 18,
+  miniStatValue: {
+    fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
+    color: '#FFFFFF',
+    marginBottom: 2,
   },
-  filterScrollView: {
-    marginTop: 16,
-    marginBottom: 12,
+  miniStatLabel: {
+    fontSize: 10,
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontWeight: '600',
+  },
+  filterSection: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
   filterContainer: {
     paddingHorizontal: 24,
-    gap: 8,
+    gap: 12,
   },
-  filterButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 12,
-    marginRight: 8,
+  filterButtonWrapper: {
+    borderRadius: 14,
+    overflow: 'hidden',
   },
   filterButtonActive: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    gap: 6,
   },
   filterButtonInactive: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1.5,
     borderColor: '#E5E7EB',
-  },
-  filterButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
+    borderRadius: 14,
   },
   filterButtonTextActive: {
+    fontSize: 15,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
   filterButtonTextInactive: {
-    color: '#6B7280',
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#374151',
   },
   listContent: {
     paddingHorizontal: 24,
-    paddingBottom: 100,
+    paddingBottom: 20,
   },
   testCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    marginBottom: 14,
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: '#E5E7EB',
+  },
+  testCardGradient: {
+    padding: 16,
   },
   testHeader: {
     flexDirection: 'row',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   testIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -406,7 +393,7 @@ const styles = StyleSheet.create({
   testTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   testName: {
     fontSize: 16,
@@ -416,7 +403,6 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   attemptedBadge: {
-    backgroundColor: '#D1FAE5',
     width: 24,
     height: 24,
     borderRadius: 12,
@@ -430,7 +416,7 @@ const styles = StyleSheet.create({
   testSubject: {
     fontSize: 13,
     color: '#6B7280',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   dot: {
     width: 3,
@@ -443,36 +429,37 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#6B7280',
     flex: 1,
+    fontWeight: '500',
   },
   testMeta: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
-    marginBottom: 12,
+    marginBottom: 14,
   },
   testMetaItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
+  },
+  metaIconCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#EEF2FF',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   testMetaText: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  difficultyBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  difficultyText: {
-    fontSize: 11,
+    fontSize: 13,
+    color: '#374151',
     fontWeight: '600',
   },
   testFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 12,
+    paddingTop: 14,
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
   },
@@ -481,54 +468,80 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
     gap: 8,
+    flexWrap: 'wrap',
+  },
+  difficultyBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  difficultyText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   typeBadge: {
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 8,
+    backgroundColor: '#EEF2FF',
   },
   typeText: {
     fontSize: 11,
     fontWeight: '600',
+    color: '#5B8DEE',
   },
-  scoreText: {
-    fontSize: 12,
-    color: '#6B7280',
+  scoreBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: '#D1FAE5',
   },
   scoreValue: {
+    fontSize: 12,
     fontWeight: '700',
     color: '#10B981',
   },
   startButton: {
-    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#5B8DEE',
+    paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    gap: 6,
   },
   startButtonText: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 80,
   },
+  emptyIconCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
   emptyStateTitle: {
-    fontSize: 16,
-    color: '#9CA3AF',
-    marginTop: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    color: '#6B7280',
+    fontWeight: '700',
+    marginBottom: 8,
   },
   emptyStateSubtitle: {
     fontSize: 14,
-    color: '#D1D5DB',
-    marginTop: 4,
+    color: '#9CA3AF',
   },
 });
 
