@@ -1,12 +1,88 @@
 // screens/TestListScreen.tsx
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, FlatList, ScrollView, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, FlatList, ScrollView, StyleSheet, Alert } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const BASE_URL = 'http://scoreup-admin.vercel.app';
+
+interface Syllabus {
+  _id: string;
+  name: string;
+  fullName: string;
+  description: string;
+  color: string;
+  subjects: any[];
+  totalTests: number;
+  students: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
+}
+
+interface SyllabiResponse {
+  success: boolean;
+  syllabi: Syllabus[];
+}
+
+interface ApiTest {
+  _id: string;
+  name: string;
+  syllabusId: {
+    _id: string;
+    name: string;
+  };
+  subjectId: {
+    _id: string;
+    name: string;
+  };
+  type: 'Mock' | 'Practice' | 'Chapter' | 'Previous Year';
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  duration: number;
+  totalQuestions: number;
+  pointsPerQuestion: number;
+  questions: any[]; // Full questions array
+  isPremium: boolean;
+  isActive: boolean;
+  attemptCount: number;
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
+}
+
+interface TestsResponse {
+  success: boolean;
+  tests: ApiTest[];
+}
+
+interface Subscription {
+  _id: string;
+  syllabusIds: Syllabus[];
+  price: number;
+  discountPercent: number;
+  finalPrice: number;
+  durationDays: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
+}
+
+interface SubsResponse {
+  success: boolean;
+  subscriptions: Subscription[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+  };
+}
 
 interface Test {
-  id: number;
+  id: string;
   name: string;
   chapter: string;
   subject: string;
@@ -18,53 +94,147 @@ interface Test {
   score?: number;
   type: 'Mock' | 'Practice' | 'Chapter' | 'Previous Year';
   icon: string;
+  testData: ApiTest; // Full test data
 }
 
 const TestListScreen = () => {
   const route = useRoute<any>();
-  const syllabus = route.params?.syllabus || 'JEE';
+  const syllabusName = route.params?.syllabus || 'JEE';
   const navigation = useNavigation<any>();
   const [selectedFilter, setSelectedFilter] = useState<string>('All');
+  const [syllabi, setSyllabi] = useState<Syllabus[]>([]);
+  const [allowedSyllabusIds, setAllowedSyllabusIds] = useState<string[]>([]);
+  const [tests, setTests] = useState<Test[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasAccess, setHasAccess] = useState(false);
 
   const filters = ['All', 'Mock', 'Practice', 'Chapter', 'Previous Year'];
 
-  // Rich test data
-  const allTests: Test[] = [
-    // Physics Tests
-    { id: 1, name: 'Full Mock Test 1', chapter: 'Complete Syllabus', subject: 'Physics', questions: 90, duration: 180, difficulty: 'Hard', points: 450, attempted: true, score: 78, type: 'Mock', icon: 'flask-outline' },
-    { id: 2, name: 'Mechanics Deep Dive', chapter: 'Mechanics', subject: 'Physics', questions: 30, duration: 45, difficulty: 'Medium', points: 150, attempted: false, type: 'Chapter', icon: 'flask-outline' },
-    { id: 3, name: 'Thermodynamics Practice', chapter: 'Thermodynamics', subject: 'Physics', questions: 25, duration: 40, difficulty: 'Easy', points: 125, attempted: true, score: 92, type: 'Practice', icon: 'flask-outline' },
-    { id: 4, name: 'Electromagnetism Quiz', chapter: 'Electromagnetism', subject: 'Physics', questions: 20, duration: 30, difficulty: 'Hard', points: 100, attempted: false, type: 'Chapter', icon: 'flask-outline' },
-    { id: 5, name: '2023 Physics Paper', chapter: 'Complete Syllabus', subject: 'Physics', questions: 75, duration: 150, difficulty: 'Hard', points: 375, attempted: false, type: 'Previous Year', icon: 'flask-outline' },
-    
-    // Chemistry Tests
-    { id: 6, name: 'Organic Chemistry Mastery', chapter: 'Organic Chemistry', subject: 'Chemistry', questions: 35, duration: 50, difficulty: 'Hard', points: 175, attempted: true, score: 65, type: 'Chapter', icon: 'beaker-outline' },
-    { id: 7, name: 'Inorganic Quick Test', chapter: 'Inorganic Chemistry', subject: 'Chemistry', questions: 20, duration: 30, difficulty: 'Medium', points: 100, attempted: false, type: 'Practice', icon: 'beaker-outline' },
-    { id: 8, name: 'Full Mock Test 2', chapter: 'Complete Syllabus', subject: 'Chemistry', questions: 90, duration: 180, difficulty: 'Hard', points: 450, attempted: false, type: 'Mock', icon: 'beaker-outline' },
-    { id: 9, name: 'Physical Chemistry Basics', chapter: 'Physical Chemistry', subject: 'Chemistry', questions: 25, duration: 40, difficulty: 'Easy', points: 125, attempted: true, score: 88, type: 'Chapter', icon: 'beaker-outline' },
-    
-    // Mathematics Tests
-    { id: 10, name: 'Calculus Challenge', chapter: 'Calculus', subject: 'Mathematics', questions: 30, duration: 45, difficulty: 'Hard', points: 150, attempted: false, type: 'Chapter', icon: 'calculator-outline' },
-    { id: 11, name: 'Algebra Sprint', chapter: 'Algebra', subject: 'Mathematics', questions: 25, duration: 35, difficulty: 'Medium', points: 125, attempted: true, score: 76, type: 'Practice', icon: 'calculator-outline' },
-    { id: 12, name: 'Coordinate Geometry Test', chapter: 'Coordinate Geometry', subject: 'Mathematics', questions: 20, duration: 30, difficulty: 'Easy', points: 100, attempted: false, type: 'Chapter', icon: 'calculator-outline' },
-    { id: 13, name: 'Full Mock Test 3', chapter: 'Complete Syllabus', subject: 'Mathematics', questions: 90, duration: 180, difficulty: 'Hard', points: 450, attempted: false, type: 'Mock', icon: 'calculator-outline' },
-    { id: 14, name: '2022 Mathematics Paper', chapter: 'Complete Syllabus', subject: 'Mathematics', questions: 75, duration: 150, difficulty: 'Hard', points: 375, attempted: true, score: 82, type: 'Previous Year', icon: 'calculator-outline' },
-    
-    // Biology Tests (for NEET)
-    { id: 15, name: 'Botany Essentials', chapter: 'Botany', subject: 'Biology', questions: 30, duration: 40, difficulty: 'Medium', points: 150, attempted: false, type: 'Chapter', icon: 'leaf-outline' },
-    { id: 16, name: 'Zoology Quick Quiz', chapter: 'Zoology', subject: 'Biology', questions: 25, duration: 35, difficulty: 'Easy', points: 125, attempted: true, score: 90, type: 'Practice', icon: 'leaf-outline' },
-  ];
+  useEffect(() => {
+    loadData();
+  }, []);
 
-  const tests = selectedFilter === 'All' 
-    ? allTests 
-    : allTests.filter(test => test.type === selectedFilter);
+  const loadData = async () => {
+    console.log('Loading test data...');
+    setIsLoading(true);
+    try {
+      // Fetch syllabi
+      const syllabiRes = await fetch(`${BASE_URL}/api/syllabus`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      console.log('Syllabi Response status:', syllabiRes.status);
+      const syllabiData: SyllabiResponse = await syllabiRes.json();
+      console.log('Syllabi Response body:', JSON.stringify(syllabiData, null, 2));
+      setSyllabi(syllabiData.syllabi || []);
 
-  const handleTestSelect = (test: Test) => {
-    navigation.navigate('Test', { syllabus, testId: test.id, testName: test.name });
+      // Get user subscription ID
+      const userSubId = await AsyncStorage.getItem('userSubscriptionId');
+      if (!userSubId) {
+        console.log('No subscription found, navigating to Subscription');
+        Alert.alert('Access Required', 'Please subscribe to access tests.', [
+          { text: 'OK', onPress: () => navigation.replace('Subscription') }
+        ]);
+        return;
+      }
+
+      // Fetch subscriptions to get user's sub details
+      const subsRes = await fetch(`${BASE_URL}/api/admin/subscriptions`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      console.log('Subscriptions Response status:', subsRes.status);
+      const subsData: SubsResponse = await subsRes.json();
+      console.log('Subscriptions Response body:', JSON.stringify(subsData, null, 2));
+
+      if (subsData.success) {
+        const userSub = subsData.subscriptions.find((sub: Subscription) => sub._id === userSubId);
+        if (userSub && userSub.isActive) {
+          const allowedIds = userSub.syllabusIds.map((s: Syllabus) => s._id);
+          setAllowedSyllabusIds(allowedIds);
+          console.log('Allowed syllabus IDs:', allowedIds);
+
+          // Check access for current syllabus
+          const currentSyllabus = syllabiData.syllabi.find((s: Syllabus) => s.name === syllabusName);
+          if (currentSyllabus && allowedIds.includes(currentSyllabus._id)) {
+            setHasAccess(true);
+            // Fetch tests for this syllabus
+            await fetchTests(currentSyllabus._id);
+          } else {
+            console.log('No access to current syllabus:', syllabusName);
+          }
+        } else {
+          console.log('Invalid or inactive subscription');
+          Alert.alert('Subscription Expired', 'Your subscription is inactive. Please renew.', [
+            { text: 'OK', onPress: () => navigation.replace('Subscription') }
+          ]);
+        }
+      } else {
+        Alert.alert('Error', 'Failed to load subscriptions.');
+      }
+    } catch (error) {
+      console.error('Load Data Error:', error);
+      Alert.alert('Error', 'Network error. Please check your connection.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchTests = async (syllabusId: string) => {
+    try {
+      const response = await fetch(`${BASE_URL}/api/tests?syllabusId=${syllabusId}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      console.log('Tests Response status:', response.status);
+      const testsData: TestsResponse = await response.json();
+      console.log('Tests Response body:', JSON.stringify(testsData, null, 2));
+
+      if (testsData.success) {
+        const mappedTests: Test[] = testsData.tests
+          .filter(test => test.isActive)
+          .map(test => ({
+            id: test._id,
+            name: test.name,
+            chapter: test.subjectId.name, // Using subject as chapter for display
+            subject: test.subjectId.name,
+            questions: test.totalQuestions,
+            duration: test.duration,
+            difficulty: test.difficulty as 'Easy' | 'Medium' | 'Hard',
+            points: test.totalQuestions * test.pointsPerQuestion,
+            attempted: false, // For now, assume not attempted; can be fetched later
+            score: undefined,
+            type: test.type as 'Mock' | 'Practice' | 'Chapter' | 'Previous Year',
+            icon: getIconForType(test.type), // Helper to get icon
+            testData: test,
+          }));
+        setTests(mappedTests);
+      } else {
+        Alert.alert('Error', 'Failed to fetch tests.');
+      }
+    } catch (error) {
+      console.error('Fetch Tests Error:', error);
+      Alert.alert('Error', 'Network error. Please check your connection.');
+    }
+  };
+
+  const getIconForType = (type: string) => {
+    switch (type) {
+      case 'Mock':
+        return 'trophy-outline';
+      case 'Practice':
+        return 'play-outline';
+      case 'Chapter':
+        return 'book-outline';
+      case 'Previous Year':
+        return 'archive-outline';
+      default:
+        return 'document-outline';
+    }
   };
 
   const getDifficultyColor = (difficulty: string) => {
-    switch(difficulty) {
+    switch (difficulty) {
       case 'Easy': return '#10B981';
       case 'Medium': return '#F59E0B';
       case 'Hard': return '#EF4444';
@@ -72,15 +242,81 @@ const TestListScreen = () => {
     }
   };
 
+  const filteredTests = selectedFilter === 'All' 
+    ? tests 
+    : tests.filter(test => test.type === selectedFilter);
+
   const stats = {
-    total: allTests.length,
-    completed: allTests.filter(t => t.attempted).length,
-    pending: allTests.filter(t => !t.attempted).length,
-    avgScore: Math.round(
-      allTests.filter(t => t.attempted && t.score).reduce((acc, t) => acc + (t.score || 0), 0) / 
-      allTests.filter(t => t.attempted).length
-    ),
+    total: tests.length,
+    completed: 0, // Since no attempted data yet
+    pending: tests.length,
+    avgScore: 0,
   };
+
+  const handleTestSelect = (test: Test) => {
+    navigation.navigate('Test', { test });
+  };
+
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient colors={['#5B8DEE', '#5B8DEE']} style={styles.header}>
+          <View style={styles.headerRow}>
+            <TouchableOpacity 
+              onPress={() => navigation.goBack()}
+              style={styles.backButton}
+            >
+              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.headerTitle}>{syllabusName} Tests</Text>
+              <Text style={styles.headerSubtitle}>Loading...</Text>
+            </View>
+          </View>
+        </LinearGradient>
+        <View style={styles.emptyState}>
+          <View style={styles.emptyIconCircle}>
+            <Ionicons name="hourglass-outline" size={48} color="#9CA3AF" />
+          </View>
+          <Text style={styles.emptyStateTitle}>Loading tests...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (!hasAccess) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient colors={['#5B8DEE', '#5B8DEE']} style={styles.header}>
+          <View style={styles.headerRow}>
+            <TouchableOpacity 
+              onPress={() => navigation.goBack()}
+              style={styles.backButton}
+            >
+              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.headerTitle}>{syllabusName} Tests</Text>
+              <Text style={styles.headerSubtitle}>Access Required</Text>
+            </View>
+          </View>
+        </LinearGradient>
+        <View style={styles.emptyState}>
+          <View style={styles.emptyIconCircle}>
+            <Ionicons name="lock-closed-outline" size={48} color="#9CA3AF" />
+          </View>
+          <Text style={styles.emptyStateTitle}>Subscribe for Access</Text>
+          <Text style={styles.emptyStateSubtitle}>Get {syllabusName} tests with a premium plan</Text>
+          <TouchableOpacity 
+            style={styles.subscribeButton}
+            onPress={() => navigation.navigate('Subscription')}
+          >
+            <Text style={styles.subscribeButtonText}>Choose Plan</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -95,7 +331,7 @@ const TestListScreen = () => {
           </TouchableOpacity>
           
           <View style={styles.headerTextContainer}>
-            <Text style={styles.headerTitle}>{syllabus} Tests</Text>
+            <Text style={styles.headerTitle}>{syllabusName} Tests</Text>
             <Text style={styles.headerSubtitle}>{stats.total} tests available</Text>
           </View>
 
@@ -147,8 +383,8 @@ const TestListScreen = () => {
 
       {/* Tests List */}
       <FlatList
-        data={tests}
-        keyExtractor={(item) => item.id.toString()}
+        data={filteredTests}
+        keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
@@ -542,6 +778,17 @@ const styles = StyleSheet.create({
   emptyStateSubtitle: {
     fontSize: 14,
     color: '#9CA3AF',
+  },
+  subscribeButton: {
+    backgroundColor: '#5B8DEE',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 10,
+  },
+  subscribeButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

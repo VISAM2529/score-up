@@ -7,46 +7,118 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { AntDesign } from '@expo/vector-icons';
 
 const LoginScreen = () => {
-  const [mobileNumber, setMobileNumber] = useState('');
+  const [email, setEmail] = useState('');
   const [showOtp, setShowOtp] = useState(false);
   const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isPhoneFocused, setIsPhoneFocused] = useState(false);
+  const [isEmailFocused, setIsEmailFocused] = useState(false);
   const [isOtpFocused, setIsOtpFocused] = useState(false);
   const navigation = useNavigation<any>();
 
-  const handleSendOTP = () => {
-    if (mobileNumber.length !== 10) {
-      Alert.alert('Invalid Number', 'Please enter a valid 10-digit mobile number');
+  const isValidEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const handleSendOTP = async () => {
+    if (!isValidEmail(email)) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address');
       return;
     }
     
+    console.log('Sending OTP to:', email);
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const response = await fetch('http://scoreup-admin.vercel.app/api/public/auth/email-otp/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      console.log('Send OTP Response status:', response.status);
+      console.log('Send OTP Response body:', await response.text());
+
+      if (response.ok) {
+        setShowOtp(true);
+        Alert.alert('OTP Sent', `Verification code sent to ${email}`);
+      } else {
+        Alert.alert('Error', 'Failed to send OTP. Please try again.');
+      }
+    } catch (error) {
+      console.error('Send OTP Error:', error);
+      Alert.alert('Error', 'Network error. Please check your connection.');
+    } finally {
       setIsLoading(false);
-      setShowOtp(true);
-      Alert.alert('OTP Sent', `Verification code sent to +91 ${mobileNumber}\n\nDemo OTP: 1234`);
-    }, 1500);
+    }
   };
 
-  const handleVerifyOTP = () => {
-    if (otp.length !== 4) {
-      Alert.alert('Invalid OTP', 'Please enter a 4-digit OTP');
+  const handleVerifyOTP = async () => {
+    if (otp.length !== 6) {
+      Alert.alert('Invalid OTP', 'Please enter a 6-digit OTP');
       return;
     }
 
+    console.log('Verifying OTP for email:', email, 'with OTP:', otp);
     setIsLoading(true);
-    // Simulate OTP verification
-    setTimeout(() => {
-      setIsLoading(false);
-      if (otp === '1234') {
+    try {
+      const response = await fetch('http://scoreup-admin.vercel.app/api/public/auth/email-otp/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, otp }),
+      });
+
+      console.log('Verify OTP Response status:', response.status);
+      console.log('Verify OTP Response body:', await response.text());
+
+      if (response.ok) {
         Alert.alert('Success', 'Login successful! Welcome to ScoreUp 🎉');
         navigation.replace('Main');
       } else {
         Alert.alert('Error', 'Invalid OTP. Please try again.');
       }
-    }, 1000);
+    } catch (error) {
+      console.error('Verify OTP Error:', error);
+      Alert.alert('Error', 'Network error. Please check your connection.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    if (!isValidEmail(email)) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address');
+      return;
+    }
+
+    console.log('Resending OTP to:', email);
+    setIsLoading(true);
+    try {
+      const response = await fetch('http://scoreup-admin.vercel.app/api/public/auth/email-otp/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      console.log('Resend OTP Response status:', response.status);
+      console.log('Resend OTP Response body:', await response.text());
+
+      if (response.ok) {
+        Alert.alert('OTP Resent', `New verification code sent to ${email}`);
+      } else {
+        Alert.alert('Error', 'Failed to resend OTP. Please try again.');
+      }
+    } catch (error) {
+      console.error('Resend OTP Error:', error);
+      Alert.alert('Error', 'Network error. Please check your connection.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSocialLogin = (provider: string) => {
@@ -98,32 +170,33 @@ const LoginScreen = () => {
               {!showOtp ? (
                 <View style={styles.formSection}>
                   <Text style={styles.formTitle}>Login</Text>
-                  <Text style={styles.formSubtitle}>Enter your phone number to continue!</Text>
+                  <Text style={styles.formSubtitle}>Enter your email address to continue!</Text>
                   
                   <View style={[
                     styles.inputContainer,
-                    isPhoneFocused && styles.inputContainerFocused
+                    isEmailFocused && styles.inputContainerFocused
                   ]}>
                     <TextInput
                       style={styles.input}
-                      placeholder="Phone number"
+                      placeholder="Email address"
                       placeholderTextColor="#C7C7C7"
-                      keyboardType="phone-pad"
-                      value={mobileNumber}
-                      onChangeText={setMobileNumber}
-                      onFocus={() => setIsPhoneFocused(true)}
-                      onBlur={() => setIsPhoneFocused(false)}
-                      maxLength={10}
+                      keyboardType="email-address"
+                      value={email}
+                      onChangeText={setEmail}
+                      onFocus={() => setIsEmailFocused(true)}
+                      onBlur={() => setIsEmailFocused(false)}
+                      autoCapitalize="none"
+                      autoCorrect={false}
                     />
                   </View>
 
                   <TouchableOpacity
                     style={[
                       styles.continueButton,
-                      (mobileNumber.length !== 10 || isLoading) && styles.continueButtonDisabled
+                      (!isValidEmail(email) || isLoading) && styles.continueButtonDisabled
                     ]}
                     onPress={handleSendOTP}
-                    disabled={mobileNumber.length !== 10 || isLoading}
+                    disabled={!isValidEmail(email) || isLoading}
                   >
                     <Text style={styles.continueButtonText}>
                       {isLoading ? 'Sending...' : 'Continue'}
@@ -161,7 +234,7 @@ const LoginScreen = () => {
                 <View style={styles.formSection}>
                   <Text style={styles.formTitle}>Verify OTP</Text>
                   <Text style={styles.formSubtitle}>
-                    Enter the code sent to +91 {mobileNumber}
+                    Enter the code sent to {email}
                   </Text>
                   
                   <View style={[
@@ -170,24 +243,24 @@ const LoginScreen = () => {
                   ]}>
                     <TextInput
                       style={styles.otpInput}
-                      placeholder="0000"
+                      placeholder="000000"
                       placeholderTextColor="#C7C7C7"
                       keyboardType="number-pad"
                       value={otp}
                       onChangeText={setOtp}
                       onFocus={() => setIsOtpFocused(true)}
                       onBlur={() => setIsOtpFocused(false)}
-                      maxLength={4}
+                      maxLength={6}
                     />
                   </View>
 
                   <TouchableOpacity
                     style={[
                       styles.continueButton,
-                      (otp.length !== 4 || isLoading) && styles.continueButtonDisabled
+                      (otp.length !== 6 || isLoading) && styles.continueButtonDisabled
                     ]}
                     onPress={handleVerifyOTP}
-                    disabled={otp.length !== 4 || isLoading}
+                    disabled={otp.length !== 6 || isLoading}
                   >
                     <Text style={styles.continueButtonText}>
                       {isLoading ? 'Verifying...' : 'Verify & Continue'}
@@ -196,9 +269,10 @@ const LoginScreen = () => {
 
                   <View style={styles.otpActions}>
                     <TouchableOpacity 
-                      onPress={() => Alert.alert('OTP Resent', 'New code sent successfully!')}
+                      onPress={handleResendOTP}
+                      disabled={isLoading}
                     >
-                      <Text style={styles.linkText}>Resend OTP</Text>
+                      <Text style={styles.linkText}>{isLoading ? 'Resending...' : 'Resend OTP'}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity 
                       onPress={() => {
@@ -206,7 +280,7 @@ const LoginScreen = () => {
                         setOtp('');
                       }}
                     >
-                      <Text style={styles.linkText}>Change Number</Text>
+                      <Text style={styles.linkText}>Change Email</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -360,7 +434,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#111827',
     textAlign: 'center',
-    letterSpacing: 4,
+    letterSpacing: 8,
   },
   continueButton: {
     backgroundColor: '#7CA4F5',
