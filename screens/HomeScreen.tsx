@@ -1,89 +1,83 @@
-// screens/HomeScreen.tsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const HomeScreen = () => {
   const navigation = useNavigation<any>();
+  const [selectedSyllabi, setSelectedSyllabi] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [userName, setUserName] = useState<string>('User');
+  const [greeting, setGreeting] = useState<string>('Hello');
+  const [greetingEmoji, setGreetingEmoji] = useState<string>('👋');
+
+  // ✅ Load user info and selected syllabi
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // --- Load Syllabi ---
+        const rawSyllabi = await AsyncStorage.getItem('@selected_syllabi');
+        if (rawSyllabi) {
+          const parsed = JSON.parse(rawSyllabi);
+          setSelectedSyllabi(Array.isArray(parsed) ? parsed : []);
+        }
+
+        // --- Load User Info ---
+        const rawUser = await AsyncStorage.getItem('@user_info');
+        if (rawUser) {
+          const user = JSON.parse(rawUser);
+          if (user?.name) setUserName(user.name);
+        }
+
+        // --- Time-based Greeting ---
+        const hour = new Date().getHours();
+        if (hour < 12) {
+          setGreeting('Good Morning');
+          setGreetingEmoji('☀️');
+        } else if (hour < 17) {
+          setGreeting('Good Afternoon');
+          setGreetingEmoji('🌤️');
+        } else {
+          setGreeting('Good Evening');
+          setGreetingEmoji('🌙');
+        }
+      } catch (err) {
+        console.warn('Error loading user data', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
 
   const stats = [
-    { label: 'Tests', value: '24', icon: 'checkmark-circle-outline', color: '#10B981' },
-    { label: 'Avg Score', value: '78%', icon: 'trending-up-outline', color: '#4F46E5' },
-    { label: 'Streak', value: '7d', icon: 'flame-outline', color: '#F59E0B' },
-    { label: 'Rank', value: '#156', icon: 'trophy-outline', color: '#EC4899' },
+    { label: 'Tests', value: '24', icon: 'checkmark-circle-outline' as const, color: '#10B981' },
+    { label: 'Avg Score', value: '78%', icon: 'trending-up-outline' as const, color: '#4F46E5' },
+    { label: 'Streak', value: '7d', icon: 'flame-outline' as const, color: '#F59E0B' },
+    { label: 'Rank', value: '#156', icon: 'trophy-outline' as const, color: '#EC4899' },
   ];
 
-  const recentTests = [
-    { 
-      id: 1, 
-      subject: 'Physics', 
-      chapter: 'Mechanics', 
-      questions: 30, 
-      duration: '45 min', 
-      difficulty: 'Medium', 
-      icon: 'flask-outline',
-      color: '#4F46E5'
-    },
-    { 
-      id: 2, 
-      subject: 'Chemistry', 
-      chapter: 'Organic Chemistry', 
-      questions: 25, 
-      duration: '40 min', 
-      difficulty: 'Hard', 
-      icon: 'beaker-outline',
-      color: '#EC4899'
-    },
-    { 
-      id: 3, 
-      subject: 'Mathematics', 
-      chapter: 'Calculus', 
-      questions: 35, 
-      duration: '50 min', 
-      difficulty: 'Easy', 
-      icon: 'calculator-outline',
-      color: '#10B981'
-    },
+  const allTests = [
+    { id: 1, subject: 'Physics', type: 'JEE', chapter: 'Mechanics', questions: 30, duration: '45 min', difficulty: 'Medium', icon: 'flask-outline' as const, color: '#4F46E5' },
+    { id: 2, subject: 'Chemistry', type: 'NEET', chapter: 'Organic Chemistry', questions: 25, duration: '40 min', difficulty: 'Hard', icon: 'beaker-outline' as const, color: '#EC4899' },
+    { id: 3, subject: 'Mathematics', type: 'JEE', chapter: 'Calculus', questions: 35, duration: '50 min', difficulty: 'Easy', icon: 'calculator-outline' as const, color: '#10B981' },
+    { id: 4, subject: 'Accounts', type: 'Commerce', chapter: 'Final Accounts', questions: 40, duration: '60 min', difficulty: 'Medium', icon: 'calculator-outline' as const, color: '#F59E0B' },
+    { id: 5, subject: 'Economics', type: 'Commerce', chapter: 'Micro Economics', questions: 30, duration: '45 min', difficulty: 'Easy', icon: 'trending-up-outline' as const, color: '#10B981' },
   ];
+
+  const filteredTests: Test[] = loading ? [] : allTests.filter(test => selectedSyllabi.includes(test.type));
 
   const quickActions = [
-    { 
-      id: 1, 
-      title: 'Practice', 
-      subtitle: 'Quick Test', 
-      icon: 'flash-outline', 
-      color: '#4F46E5', 
-      screen: 'Tests' 
-    },
-    { 
-      id: 2, 
-      title: 'Results', 
-      subtitle: 'Performance', 
-      icon: 'stats-chart-outline', 
-      color: '#EC4899', 
-      screen: 'My Results' 
-    },
-    { 
-      id: 3, 
-      title: 'Syllabus', 
-      subtitle: 'Topics', 
-      icon: 'book-outline', 
-      color: '#10B981', 
-      screen: 'Tests' 
-    },
-    { 
-      id: 4, 
-      title: 'Profile', 
-      subtitle: 'Account', 
-      icon: 'person-outline', 
-      color: '#F59E0B', 
-      screen: 'Profile' 
-    },
+    { id: 1, title: 'Practice', subtitle: 'Quick Test', icon: 'flash-outline' as const, color: '#4F46E5', screen: 'Tests' },
+    { id: 2, title: 'Results', subtitle: 'Performance', icon: 'stats-chart-outline' as const, color: '#EC4899', screen: 'My Results' },
+    { id: 3, title: 'Syllabus', subtitle: 'Topics', icon: 'book-outline' as const, color: '#10B981', screen: 'Tests' },
+    { id: 4, title: 'Profile', subtitle: 'Account', icon: 'person-outline' as const, color: '#F59E0B', screen: 'Profile' },
   ];
 
   const getDifficultyColor = (difficulty: string) => {
-    switch(difficulty) {
+    switch (difficulty) {
       case 'Easy': return '#10B981';
       case 'Medium': return '#F59E0B';
       case 'Hard': return '#EF4444';
@@ -93,7 +87,7 @@ const HomeScreen = () => {
 
   return (
     <View style={styles.container}>
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
@@ -102,8 +96,8 @@ const HomeScreen = () => {
         <View style={styles.header}>
           <View style={styles.headerTop}>
             <View style={styles.greetingSection}>
-              <Text style={styles.greetingText}>Good Morning 👋</Text>
-              <Text style={styles.userName}>Rahul Sharma</Text>
+              <Text style={styles.greetingText}>{`${greeting} ${greetingEmoji}`}</Text>
+              <Text style={styles.userName}>{userName}</Text>
             </View>
             <TouchableOpacity style={styles.notificationButton}>
               <Ionicons name="notifications-outline" size={24} color="#374151" />
@@ -164,7 +158,7 @@ const HomeScreen = () => {
           </View>
         </View>
 
-        {/* Recent Tests */}
+        {/* Recommended Tests */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recommended Tests</Text>
@@ -173,54 +167,66 @@ const HomeScreen = () => {
             </TouchableOpacity>
           </View>
 
-          {recentTests.map((test) => (
-            <TouchableOpacity
-              key={test.id}
-              style={styles.testCard}
-              onPress={() => navigation.navigate('Tests')}
-            >
-              <View style={styles.testCardContent}>
-                <View style={[styles.testIcon, { backgroundColor: `${test.color}15` }]}>
-                  <Ionicons name={test.icon} size={28} color={test.color} />
-                </View>
-                
-                <View style={styles.testInfo}>
-                  <Text style={styles.testSubject}>{test.subject}</Text>
-                  <Text style={styles.testChapter}>{test.chapter}</Text>
-                  
-                  <View style={styles.testMeta}>
-                    <View style={styles.testMetaItem}>
-                      <Ionicons name="document-text-outline" size={14} color="#6B7280" />
-                      <Text style={styles.testMetaText}>{test.questions} Qs</Text>
+          {loading && (
+            <View style={styles.loadingState}>
+              <Text style={styles.loadingText}>Loading recommended tests...</Text>
+            </View>
+          )}
+
+          {!loading && filteredTests.length === 0 && (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>No tests available for your selected subjects.</Text>
+              <Text style={styles.emptyStateSubtext}>Please select subjects from your profile.</Text>
+            </View>
+          )}
+
+          {!loading && filteredTests.length > 0 && (
+            <>
+              {filteredTests.map((test: Test) => (
+                <TouchableOpacity
+                  key={test.id}
+                  style={styles.testCard}
+                  onPress={() => navigation.navigate('Tests')}
+                >
+                  <View style={styles.testCardContent}>
+                    <View style={[styles.testIcon, { backgroundColor: `${test.color}15` }]}>
+                      <Ionicons name={test.icon as any} size={28} color={test.color} />
                     </View>
-                    <View style={styles.testMetaItem}>
-                      <Ionicons name="time-outline" size={14} color="#6B7280" />
-                      <Text style={styles.testMetaText}>{test.duration}</Text>
+
+                    <View style={styles.testInfo}>
+                      <Text style={styles.testSubject}>{test.subject}</Text>
+                      <Text style={styles.testChapter}>{test.chapter}</Text>
+
+                      <View style={styles.testMeta}>
+                        <View style={styles.testMetaItem}>
+                          <Ionicons name="document-text-outline" size={14} color="#6B7280" />
+                          <Text style={styles.testMetaText}>{test.questions} Qs</Text>
+                        </View>
+                        <View style={styles.testMetaItem}>
+                          <Ionicons name="time-outline" size={14} color="#6B7280" />
+                          <Text style={styles.testMetaText}>{test.duration}</Text>
+                        </View>
+                        <View
+                          style={[
+                            styles.difficultyBadge,
+                            { backgroundColor: `${getDifficultyColor(test.difficulty)}15` },
+                          ]}
+                        >
+                          <Text style={[styles.difficultyText, { color: getDifficultyColor(test.difficulty) }]}>
+                            {test.difficulty}
+                          </Text>
+                        </View>
+                      </View>
                     </View>
-                    <View 
-                      style={[
-                        styles.difficultyBadge, 
-                        { backgroundColor: `${getDifficultyColor(test.difficulty)}15` }
-                      ]}
-                    >
-                      <Text 
-                        style={[
-                          styles.difficultyText, 
-                          { color: getDifficultyColor(test.difficulty) }
-                        ]}
-                      >
-                        {test.difficulty}
-                      </Text>
+
+                    <View style={styles.testArrow}>
+                      <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
                     </View>
                   </View>
-                </View>
-
-                <View style={styles.testArrow}>
-                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
+                </TouchableOpacity>
+              ))}
+            </>
+          )}
         </View>
 
         {/* Bottom Spacing */}
@@ -230,10 +236,53 @@ const HomeScreen = () => {
   );
 };
 
+type Test = {
+  id: number;
+  subject: string;
+  type: string;
+  chapter: string;
+  questions: number;
+  duration: string;
+  difficulty: string;
+  icon: any;
+  color: string;
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
+  },
+  loadingState: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  emptyState: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 4,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: '#6B7280',
   },
   scrollView: {
     flex: 1,

@@ -10,7 +10,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import TestListScreen from '../screens/TestListScreen';
 import TestScreen from '../screens/TestScreen';
 import ResultsScreen from '../screens/ResultsScreen';
-
+import SubscriptionScreen from 'screens/SubscriptionScreen';
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
@@ -20,6 +20,7 @@ const ROUTES = {
   TESTS: 'Tests',
   RESULTS: 'My Results',
   PROFILE: 'Profile',
+  SUBSCRIPTION : "Subscription",
 };
 
 const TAB_CONFIG = {
@@ -39,6 +40,11 @@ const TAB_CONFIG = {
     label: 'Results',
   },
   [ROUTES.PROFILE]: {
+    iconActive: 'person',
+    iconInactive: 'person-outline',
+    label: 'Profile',
+  },
+   [ROUTES.SUBSCRIPTION]: {
     iconActive: 'person',
     iconInactive: 'person-outline',
     label: 'Profile',
@@ -129,6 +135,13 @@ export default function MainTabNavigator() {
         component={ProfileScreen}
         options={{ 
           tabBarLabel: TAB_CONFIG[ROUTES.PROFILE].label,
+        }}
+      />
+       <Tab.Screen 
+        name={ROUTES.SUBSCRIPTION}
+        component={SubscriptionScreen}
+        options={{ 
+          tabBarLabel: TAB_CONFIG[ROUTES.SUBSCRIPTION].label,
         }}
       />
     </Tab.Navigator>
