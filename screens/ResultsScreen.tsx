@@ -1,298 +1,437 @@
 // screens/ResultsScreen.tsx
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Animated, StyleSheet } from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, FlatList, ScrollView, StyleSheet } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
+interface Result {
+  id: number;
+  syllabus: string;
+  testName: string;
+  subject: string;
+  score: number;
+  total: number;
+  percentage: number;
+  points: number;
+  date: string;
+  duration: number;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  rank?: number;
+  icon: string;
+}
+
 const ResultsScreen = () => {
-  const route = useRoute<any>();
-  const { score, total, percentage, points, syllabus, testId, testName, timeSpent } = route.params;
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation();
+  const [selectedFilter, setSelectedFilter] = useState('All');
 
-  const [progressAnim] = useState(new Animated.Value(0));
+  const filters = ['All', 'JEE', 'NEET', 'CET'];
 
-  useEffect(() => {
-    // Animate progress circle
-    Animated.spring(progressAnim, {
-      toValue: percentage,
-      tension: 20,
-      friction: 7,
-      useNativeDriver: false,
-    }).start();
-  }, []);
+  // Rich results data
+  const allResults: Result[] = [
+    { 
+      id: 1, 
+      syllabus: 'JEE', 
+      testName: 'Full Mock Test 1',
+      subject: 'Physics',
+      score: 28, 
+      total: 30, 
+      percentage: 93,
+      points: 280, 
+      date: '2025-11-20',
+      duration: 42,
+      difficulty: 'Hard',
+      rank: 12,
+      icon: 'flask-outline'
+    },
+    { 
+      id: 2, 
+      syllabus: 'NEET', 
+      testName: 'Organic Chemistry Mastery',
+      subject: 'Chemistry',
+      score: 27, 
+      total: 35, 
+      percentage: 77,
+      points: 270,
+      date: '2025-11-19',
+      duration: 48,
+      difficulty: 'Hard',
+      rank: 45,
+      icon: 'beaker-outline'
+    },
+    { 
+      id: 3, 
+      syllabus: 'JEE', 
+      testName: 'Calculus Challenge',
+      subject: 'Mathematics',
+      score: 24, 
+      total: 30, 
+      percentage: 80,
+      points: 240,
+      date: '2025-11-18',
+      duration: 38,
+      difficulty: 'Medium',
+      rank: 28,
+      icon: 'calculator-outline'
+    },
+    { 
+      id: 4, 
+      syllabus: 'CET', 
+      testName: 'Mechanics Deep Dive',
+      subject: 'Physics',
+      score: 22, 
+      total: 30, 
+      percentage: 73,
+      points: 220,
+      date: '2025-11-17',
+      duration: 44,
+      difficulty: 'Medium',
+      rank: 56,
+      icon: 'flask-outline'
+    },
+    { 
+      id: 5, 
+      syllabus: 'NEET', 
+      testName: 'Botany Essentials',
+      subject: 'Biology',
+      score: 26, 
+      total: 30, 
+      percentage: 87,
+      points: 260,
+      date: '2025-11-16',
+      duration: 35,
+      difficulty: 'Easy',
+      rank: 18,
+      icon: 'leaf-outline'
+    },
+    { 
+      id: 6, 
+      syllabus: 'JEE', 
+      testName: 'Algebra Sprint',
+      subject: 'Mathematics',
+      score: 19, 
+      total: 25, 
+      percentage: 76,
+      points: 190,
+      date: '2025-11-15',
+      duration: 32,
+      difficulty: 'Medium',
+      rank: 38,
+      icon: 'calculator-outline'
+    },
+    { 
+      id: 7, 
+      syllabus: 'JEE', 
+      testName: 'Thermodynamics Practice',
+      subject: 'Physics',
+      score: 23, 
+      total: 25, 
+      percentage: 92,
+      points: 230,
+      date: '2025-11-14',
+      duration: 37,
+      difficulty: 'Easy',
+      rank: 8,
+      icon: 'flask-outline'
+    },
+    { 
+      id: 8, 
+      syllabus: 'NEET', 
+      testName: 'Inorganic Quick Test',
+      subject: 'Chemistry',
+      score: 15, 
+      total: 20, 
+      percentage: 75,
+      points: 150,
+      date: '2025-11-13',
+      duration: 28,
+      difficulty: 'Medium',
+      rank: 42,
+      icon: 'beaker-outline'
+    },
+    { 
+      id: 9, 
+      syllabus: 'CET', 
+      testName: 'Coordinate Geometry Test',
+      subject: 'Mathematics',
+      score: 17, 
+      total: 20, 
+      percentage: 85,
+      points: 170,
+      date: '2025-11-12',
+      duration: 26,
+      difficulty: 'Easy',
+      rank: 15,
+      icon: 'calculator-outline'
+    },
+    { 
+      id: 10, 
+      syllabus: 'JEE', 
+      testName: 'Electromagnetism Quiz',
+      subject: 'Physics',
+      score: 14, 
+      total: 20, 
+      percentage: 70,
+      points: 140,
+      date: '2025-11-11',
+      duration: 29,
+      difficulty: 'Hard',
+      rank: 67,
+      icon: 'flask-outline'
+    },
+  ];
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}m ${secs}s`;
-  };
+  const results = selectedFilter === 'All' 
+    ? allResults 
+    : allResults.filter(result => result.syllabus === selectedFilter);
 
-  const getPerformanceMessage = () => {
-    if (percentage >= 90) return { text: 'Outstanding!', color: '#10B981', icon: 'trophy-outline' };
-    if (percentage >= 75) return { text: 'Excellent Work!', color: '#3B82F6', icon: 'star-outline' };
-    if (percentage >= 60) return { text: 'Good Job!', color: '#F59E0B', icon: 'thumbs-up-outline' };
-    if (percentage >= 40) return { text: 'Keep Practicing!', color: '#F97316', icon: 'bulb-outline' };
-    return { text: 'Need More Practice!', color: '#EF4444', icon: 'book-outline' };
-  };
-
-  const getGrade = () => {
-    if (percentage >= 90) return 'A+';
-    if (percentage >= 80) return 'A';
-    if (percentage >= 70) return 'B+';
-    if (percentage >= 60) return 'B';
-    if (percentage >= 50) return 'C';
-    return 'D';
-  };
-
-  const getSyllabusColor = () => {
-    switch(syllabus) {
-      case 'JEE': return '#4F46E5';
-      case 'NEET': return '#EC4899';
-      case 'CET': return '#10B981';
-      default: return '#4F46E5';
+  const getDifficultyColor = (difficulty: string) => {
+    switch(difficulty) {
+      case 'Easy': return '#10B981';
+      case 'Medium': return '#F59E0B';
+      case 'Hard': return '#EF4444';
+      default: return '#6B7280';
     }
   };
 
-  const performanceMsg = getPerformanceMessage();
-  const grade = getGrade();
-  const correct = score;
-  const incorrect = total - score;
-  const syllabusColor = getSyllabusColor();
+  const getPerformanceColor = (percentage: number) => {
+    if (percentage >= 90) return '#10B981';
+    if (percentage >= 75) return '#5B8DEE';
+    if (percentage >= 60) return '#F59E0B';
+    return '#EF4444';
+  };
 
-  // Calculate insights
-  const insights = [
-    { 
-      icon: 'checkmark-circle-outline', 
-      label: 'Correct', 
-      value: correct.toString(), 
-      color: '#10B981',
-      detail: `${((correct / total) * 100).toFixed(0)}% accuracy`
-    },
-    { 
-      icon: 'close-circle-outline', 
-      label: 'Incorrect', 
-      value: incorrect.toString(), 
-      color: '#EF4444',
-      detail: `${((incorrect / total) * 100).toFixed(0)}% wrong`
-    },
-    { 
-      icon: 'time-outline', 
-      label: 'Time', 
-      value: formatTime(timeSpent), 
-      color: '#3B82F6',
-      detail: `${Math.round(timeSpent / total)}s per Q`
-    },
-    { 
-      icon: 'star-outline', 
-      label: 'Points', 
-      value: points.toString(), 
-      color: '#F59E0B',
-      detail: 'Rewards earned'
-    },
-  ];
+  const getPerformanceBadge = (percentage: number) => {
+    if (percentage >= 90) return { text: 'Excellent', color: '#10B981' };
+    if (percentage >= 75) return { text: 'Good', color: '#5B8DEE' };
+    if (percentage >= 60) return { text: 'Average', color: '#F59E0B' };
+    return { text: 'Needs Work', color: '#EF4444' };
+  };
 
-  const recommendations = [
-    { 
-      icon: 'book-outline', 
-      title: 'Review Answers', 
-      subtitle: 'Learn from mistakes',
-      action: 'View',
-      color: '#4F46E5'
-    },
-    { 
-      icon: 'refresh-outline', 
-      title: 'Retake Test', 
-      subtitle: 'Improve score',
-      action: 'Retake',
-      color: '#10B981'
-    },
-    { 
-      icon: 'trending-up-outline', 
-      title: 'Practice More', 
-      subtitle: 'Strengthen topics',
-      action: 'Practice',
-      color: '#EC4899'
-    },
-  ];
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (date.toDateString() === today.toDateString()) return 'Today';
+    if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+    
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  // Calculate overall stats
+  const totalTests = allResults.length;
+  const avgScore = Math.round(
+    allResults.reduce((acc, r) => acc + r.percentage, 0) / totalTests
+  );
+  const totalPoints = allResults.reduce((acc, r) => acc + r.points, 0);
 
   return (
     <View style={styles.container}>
-      <ScrollView 
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerTop}>
-            <TouchableOpacity 
-              onPress={() => navigation.navigate('Home')}
-              style={styles.closeButton}
-            >
-              <Ionicons name="close" size={24} color="#374151" />
-            </TouchableOpacity>
-            <View style={[styles.syllabusBadge, { backgroundColor: `${syllabusColor}15` }]}>
-              <Text style={[styles.syllabusBadgeText, { color: syllabusColor }]}>{syllabus}</Text>
+      {/* Fixed Compact Header */}
+      <LinearGradient colors={['#5B8DEE', '#5B8DEE']} style={styles.header}>
+        <View style={styles.headerRow}>
+          <View style={styles.headerLeft}>
+            <View style={styles.iconCircle}>
+              <Ionicons name="analytics" size={28} color="#5B8DEE" />
+            </View>
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.headerTitle}>My Results</Text>
+              <Text style={styles.headerSubtitle}>{totalTests} tests completed</Text>
             </View>
           </View>
 
-          <View style={styles.headerContent}>
-            <Text style={styles.headerLabel}>Test Completed</Text>
-            <Text style={styles.headerTitle}>{testName || `Test ${testId}`}</Text>
-            <View style={styles.dateBadge}>
-              <Text style={styles.dateText}>{new Date().toLocaleDateString()}</Text>
+          <View style={styles.headerStats}>
+            <View style={styles.miniStat}>
+              <Text style={styles.miniStatValue}>{avgScore}%</Text>
+              <Text style={styles.miniStatLabel}>Avg</Text>
+            </View>
+            <View style={styles.miniStat}>
+              <Text style={styles.miniStatValue}>{totalPoints}</Text>
+              <Text style={styles.miniStatLabel}>Points</Text>
             </View>
           </View>
         </View>
+      </LinearGradient>
 
-        {/* Score Circle Card */}
-        <View style={styles.section}>
-          <View style={styles.scoreCard}>
-            {/* Performance Message */}
-            <View style={[styles.performanceIcon, { backgroundColor: `${performanceMsg.color}15` }]}>
-              <Ionicons name={performanceMsg.icon} size={32} color={performanceMsg.color} />
-            </View>
-            <Text style={[styles.performanceText, { color: performanceMsg.color }]}>
-              {performanceMsg.text}
-            </Text>
-
-            {/* Score Circle */}
-            <View style={styles.scoreCircleContainer}>
-              <View style={styles.scoreCircleOuter}>
-                <View style={[styles.scoreCircleProgress, { 
-                  borderColor: performanceMsg.color,
-                  borderTopWidth: 8,
-                  borderRightWidth: percentage >= 25 ? 8 : 0,
-                  borderBottomWidth: percentage >= 50 ? 8 : 0,
-                  borderLeftWidth: percentage >= 75 ? 8 : 0,
-                }]} />
-                
-                <View style={styles.scoreCircleInner}>
-                  <Text style={styles.scorePercentage}>{percentage}%</Text>
-                  <Text style={styles.scoreLabel}>Score</Text>
-                  <View style={[styles.gradeBadge, { backgroundColor: `${performanceMsg.color}15` }]}>
-                    <Text style={[styles.gradeText, { color: performanceMsg.color }]}>
-                      Grade {grade}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-
-            {/* Score Details */}
-            <View style={styles.scoreDetails}>
-              <Text style={styles.scoreDetailsText}>
-                You answered <Text style={styles.scoreDetailsBold}>{correct}</Text> out of{' '}
-                <Text style={styles.scoreDetailsBold}>{total}</Text> correctly
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Points Earned Card */}
-        <View style={styles.section}>
-          <View style={styles.pointsCard}>
-            <View style={styles.pointsContent}>
-              <View style={styles.pointsLeft}>
-                <View style={styles.pointsIcon}>
-                  <Ionicons name="star" size={32} color="#F59E0B" />
-                </View>
-                <View style={styles.pointsInfo}>
-                  <Text style={styles.pointsLabel}>Points Earned</Text>
-                  <Text style={styles.pointsValue}>+{points}</Text>
-                  <Text style={styles.pointsSubtext}>Use for rewards</Text>
-                </View>
-              </View>
-              <TouchableOpacity style={styles.redeemButton}>
-                <Text style={styles.redeemButtonText}>Redeem</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
-        {/* Insights Grid */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Performance Insights</Text>
-          <View style={styles.insightsGrid}>
-            {insights.map((insight, index) => (
-              <View key={index} style={styles.insightCard}>
-                <View style={[styles.insightIcon, { backgroundColor: `${insight.color}15` }]}>
-                  <Ionicons name={insight.icon} size={20} color={insight.color} />
-                </View>
-                <Text style={styles.insightLabel}>{insight.label}</Text>
-                <Text style={styles.insightValue}>{insight.value}</Text>
-                <Text style={styles.insightDetail}>{insight.detail}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* Recommendations */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>What's Next?</Text>
-          {recommendations.map((rec, index) => (
+      {/* Filter Tabs */}
+      <View style={styles.filterSection}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterContainer}
+        >
+          {filters.map((filter) => (
             <TouchableOpacity
-              key={index}
-              style={styles.recommendationCard}
-              activeOpacity={0.7}
+              key={filter}
+              onPress={() => setSelectedFilter(filter)}
+              style={styles.filterButtonWrapper}
             >
-              <View style={[styles.recommendationIcon, { backgroundColor: `${rec.color}15` }]}>
-                <Ionicons name={rec.icon} size={24} color={rec.color} />
-              </View>
-              <View style={styles.recommendationContent}>
-                <Text style={styles.recommendationTitle}>{rec.title}</Text>
-                <Text style={styles.recommendationSubtitle}>{rec.subtitle}</Text>
-              </View>
-              <View style={styles.recommendationAction}>
-                <Text style={styles.recommendationActionText}>{rec.action}</Text>
-              </View>
+              {selectedFilter === filter ? (
+                <LinearGradient
+                  colors={['#5B8DEE', '#7BA7F7']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.filterButtonActive}
+                >
+                  <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" />
+                  <Text style={styles.filterButtonTextActive}>{filter}</Text>
+                </LinearGradient>
+              ) : (
+                <View style={styles.filterButtonInactive}>
+                  <Text style={styles.filterButtonTextInactive}>{filter}</Text>
+                </View>
+              )}
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
+      </View>
 
-        {/* Action Buttons */}
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={[styles.primaryButton, { backgroundColor: syllabusColor }]}
-            onPress={() => navigation.navigate('Tests')}
-          >
-            <Ionicons name="grid-outline" size={20} color="#FFFFFF" />
-            <Text style={styles.primaryButtonText}>Browse All Tests</Text>
-          </TouchableOpacity>
+      {/* Results List */}
+      <FlatList
+        data={results}
+        keyExtractor={(item) => item.id.toString()}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        renderItem={({ item }) => {
+          const badge = getPerformanceBadge(item.percentage);
+          return (
+            <View style={styles.resultCard}>
+              <LinearGradient
+                colors={['#FFFFFF', '#FAFBFF']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.cardGradient}
+              >
+                {/* Header */}
+                <View style={styles.cardHeader}>
+                  <View style={styles.cardHeaderLeft}>
+                    <LinearGradient
+                      colors={['#5B8DEE', '#7BA7F7']}
+                      style={styles.cardIconCircle}
+                    >
+                      <Ionicons name={item.icon} size={24} color="#FFFFFF" />
+                    </LinearGradient>
+                    <View style={styles.cardTextContainer}>
+                      <Text style={styles.cardTitle} numberOfLines={1}>
+                        {item.testName}
+                      </Text>
+                      <View style={styles.cardSubInfo}>
+                        <Text style={styles.cardSubject}>{item.subject}</Text>
+                        <View style={styles.dot} />
+                        <Text style={styles.cardSyllabus}>{item.syllabus}</Text>
+                      </View>
+                    </View>
+                  </View>
 
-          <View style={styles.buttonRow}>
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={() => navigation.navigate('My Results')}
-            >
-              <Ionicons name="bar-chart-outline" size={20} color="#6B7280" />
-              <Text style={styles.secondaryButtonText}>History</Text>
-            </TouchableOpacity>
+                  {/* Score Badge */}
+                  <View 
+                    style={[
+                      styles.scoreBadge,
+                      { backgroundColor: getPerformanceColor(item.percentage) }
+                    ]}
+                  >
+                    <Text style={styles.scoreText}>{item.percentage}%</Text>
+                  </View>
+                </View>
 
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={() => navigation.navigate('Home')}
-            >
-              <Ionicons name="home-outline" size={20} color="#6B7280" />
-              <Text style={styles.secondaryButtonText}>Home</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+                {/* Details Row */}
+                <View style={styles.detailsRow}>
+                  <View style={styles.detailItem}>
+                    <View style={styles.detailIconCircle}>
+                      <Ionicons name="checkmark" size={12} color="#10B981" />
+                    </View>
+                    <Text style={styles.detailText}>{item.score}/{item.total} Correct</Text>
+                  </View>
+                  <View style={styles.detailItem}>
+                    <View style={styles.detailIconCircle}>
+                      <Ionicons name="time" size={12} color="#5B8DEE" />
+                    </View>
+                    <Text style={styles.detailText}>{item.duration} min</Text>
+                  </View>
+                  <View style={styles.detailItem}>
+                    <View style={styles.detailIconCircle}>
+                      <Ionicons name="star" size={12} color="#F59E0B" />
+                    </View>
+                    <Text style={styles.detailText}>{item.points} pts</Text>
+                  </View>
+                </View>
 
-        {/* Study Tip */}
-        <View style={styles.section}>
-          <View style={styles.tipCard}>
-            <View style={styles.tipHeader}>
-              <View style={styles.tipIconCircle}>
-                <Ionicons name="bulb-outline" size={24} color="#4F46E5" />
-              </View>
-              <Text style={styles.tipTitle}>Study Tip</Text>
+                {/* Bottom Section */}
+                <View style={styles.cardFooter}>
+                  <View style={styles.badgesContainer}>
+                    <View 
+                      style={[
+                        styles.difficultyBadge, 
+                        { backgroundColor: getDifficultyColor(item.difficulty) }
+                      ]}
+                    >
+                      <Text style={styles.difficultyText}>{item.difficulty}</Text>
+                    </View>
+                    <View 
+                      style={[
+                        styles.performanceBadge,
+                        { backgroundColor: `${badge.color}20` }
+                      ]}
+                    >
+                      <Text 
+                        style={[
+                          styles.performanceText,
+                          { color: badge.color }
+                        ]}
+                      >
+                        {badge.text}
+                      </Text>
+                    </View>
+                    {item.rank && (
+                      <View style={styles.rankBadge}>
+                        <Ionicons name="trophy" size={12} color="#8B5CF6" />
+                        <Text style={styles.rankText}>#{item.rank}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.dateText}>{formatDate(item.date)}</Text>
+                </View>
+
+                {/* Review Button */}
+                <TouchableOpacity 
+                  style={styles.reviewButton}
+                  onPress={() => navigation.navigate('ResultDetail', {
+                    score: item.score,
+                    total: item.total,
+                    percentage: item.percentage,
+                    points: item.points,
+                    syllabus: item.syllabus,
+                    testId: item.id,
+                    testName: item.testName,
+                    timeSpent: item.duration * 60
+                  })}
+                >
+                  <Text style={styles.reviewButtonText}>Review Answers</Text>
+                  <Ionicons name="arrow-forward" size={16} color="#5B8DEE" />
+                </TouchableOpacity>
+              </LinearGradient>
             </View>
-            <Text style={styles.tipText}>
-              Consistent practice is key to success. Review your mistakes, understand concepts, and keep taking tests regularly to improve!
-            </Text>
+          );
+        }}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIconCircle}>
+              <Ionicons name="document-outline" size={48} color="#9CA3AF" />
+            </View>
+            <Text style={styles.emptyStateTitle}>No results found</Text>
+            <Text style={styles.emptyStateSubtitle}>Complete a test to see your results</Text>
+            <TouchableOpacity 
+              style={styles.emptyButton}
+              onPress={() => navigation.navigate('Tests')}
+            >
+              <Text style={styles.emptyButtonText}>Take a Test</Text>
+              <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+            </TouchableOpacity>
           </View>
-        </View>
-      </ScrollView>
+        }
+      />
     </View>
   );
 };
@@ -302,284 +441,139 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
-  scrollContent: {
-    paddingBottom: 32,
-  },
+  // Fixed Compact Header
   header: {
-    backgroundColor: '#FFFFFF',
     paddingTop: 60,
     paddingHorizontal: 24,
-    paddingBottom: 140,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
+    paddingBottom: 16,
   },
-  headerTop: {
+  headerRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    justifyContent: 'space-between',
   },
-  closeButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#F3F4F6',
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  iconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 12,
   },
-  syllabusBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
-  },
-  syllabusBadgeText: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  headerContent: {
-    alignItems: 'center',
-  },
-  headerLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 8,
+  headerTextContainer: {
+    flex: 1,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#111827',
-    textAlign: 'center',
-    marginBottom: 12,
+    color: '#FFFFFF',
+    marginBottom: 2,
   },
-  dateBadge: {
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
-  dateText: {
+  headerSubtitle: {
     fontSize: 12,
-    color: '#6B7280',
+    color: 'rgba(255, 255, 255, 0.8)',
     fontWeight: '500',
   },
-  section: {
-    paddingHorizontal: 24,
-    marginTop: 24,
+  headerStats: {
+    flexDirection: 'row',
+    gap: 12,
   },
-  scoreCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 24,
-    marginTop: -100,
+  miniStat: {
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 5,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
-  },
-  performanceIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  performanceText: {
-    fontSize: 22,
-    fontWeight: '700',
-    marginBottom: 24,
-  },
-  scoreCircleContainer: {
-    marginBottom: 24,
-  },
-  scoreCircleOuter: {
-    width: 192,
-    height: 192,
-    borderRadius: 96,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  scoreCircleProgress: {
-    position: 'absolute',
-    width: 192,
-    height: 192,
-    borderRadius: 96,
-    transform: [{ rotate: '-90deg' }],
-    borderTopColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderBottomColor: 'transparent',
-    borderLeftColor: 'transparent',
-  },
-  scoreCircleInner: {
-    alignItems: 'center',
-  },
-  scorePercentage: {
-    fontSize: 48,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  scoreLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 4,
-    marginBottom: 12,
-  },
-  gradeBadge: {
-    paddingHorizontal: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 12,
+    borderRadius: 10,
+    minWidth: 60,
   },
-  gradeText: {
+  miniStatValue: {
     fontSize: 16,
     fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 2,
   },
-  scoreDetails: {
+  miniStatLabel: {
+    fontSize: 10,
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontWeight: '600',
+  },
+  // Filter Section
+  filterSection: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  filterContainer: {
+    paddingHorizontal: 24,
+    gap: 12,
+  },
+  filterButtonWrapper: {
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  filterButtonActive: {
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    gap: 6,
   },
-  scoreDetailsText: {
+  filterButtonInactive: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 14,
+  },
+  filterButtonTextActive: {
     fontSize: 15,
-    color: '#6B7280',
-    textAlign: 'center',
-  },
-  scoreDetailsBold: {
     fontWeight: '700',
-    color: '#111827',
+    color: '#FFFFFF',
   },
-  pointsCard: {
-    backgroundColor: '#FEF3C7',
-    borderRadius: 20,
-    padding: 20,
+  filterButtonTextInactive: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  // Results List
+  listContent: {
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 20,
+  },
+  resultCard: {
+    borderRadius: 16,
+    marginBottom: 14,
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#FDE68A',
+    borderColor: '#E5E7EB',
   },
-  pointsContent: {
+  cardGradient: {
+    padding: 16,
+  },
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 14,
   },
-  pointsLeft: {
+  cardHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    marginRight: 12,
   },
-  pointsIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  pointsInfo: {
-    flex: 1,
-  },
-  pointsLabel: {
-    fontSize: 12,
-    color: '#92400E',
-    marginBottom: 4,
-  },
-  pointsValue: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#78350F',
-    marginBottom: 2,
-  },
-  pointsSubtext: {
-    fontSize: 11,
-    color: '#92400E',
-  },
-  redeemButton: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  redeemButtonText: {
-    color: '#F59E0B',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 16,
-    letterSpacing: -0.3,
-  },
-  insightsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  insightCard: {
-    width: '48%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
-  },
-  insightIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  insightLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginBottom: 4,
-  },
-  insightValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  insightDetail: {
-    fontSize: 11,
-    color: '#9CA3AF',
-  },
-  recommendationCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
-  },
-  recommendationIcon: {
+  cardIconCircle: {
     width: 48,
     height: 48,
     borderRadius: 24,
@@ -587,100 +581,177 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  recommendationContent: {
+  cardTextContainer: {
     flex: 1,
   },
-  recommendationTitle: {
+  cardTitle: {
     fontSize: 15,
     fontWeight: '700',
     color: '#111827',
     marginBottom: 4,
   },
-  recommendationSubtitle: {
+  cardSubInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  cardSubject: {
     fontSize: 13,
     color: '#6B7280',
+    fontWeight: '600',
   },
-  recommendationAction: {
-    backgroundColor: '#F3F4F6',
+  dot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: '#9CA3AF',
+    marginHorizontal: 6,
+  },
+  cardSyllabus: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  scoreBadge: {
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 10,
+    borderRadius: 12,
   },
-  recommendationActionText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  primaryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 16,
-    marginBottom: 12,
-    gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
+  scoreText: {
     fontSize: 16,
     fontWeight: '700',
+    color: '#FFFFFF',
   },
-  buttonRow: {
+  detailsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
+    marginBottom: 14,
   },
-  secondaryButton: {
-    flex: 1,
+  detailItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
     gap: 6,
   },
-  secondaryButtonText: {
-    color: '#6B7280',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  tipCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 2,
-    borderColor: '#EEF2FF',
-  },
-  tipHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  tipIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#EEF2FF',
+  detailIconCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
   },
-  tipTitle: {
-    fontSize: 16,
+  detailText: {
+    fontSize: 12,
+    color: '#374151',
+    fontWeight: '600',
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    marginBottom: 14,
+  },
+  badgesContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+    flexWrap: 'wrap',
+  },
+  difficultyBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  difficultyText: {
+    fontSize: 11,
     fontWeight: '700',
-    color: '#111827',
+    color: '#FFFFFF',
   },
-  tipText: {
+  performanceBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  performanceText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  rankBadge: {
+    backgroundColor: '#F3E8FF',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  rankText: {
+    fontSize: 11,
+    color: '#8B5CF6',
+    fontWeight: '600',
+  },
+  dateText: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    fontWeight: '500',
+  },
+  reviewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EEF2FF',
+    paddingVertical: 12,
+    borderRadius: 10,
+    gap: 6,
+  },
+  reviewButtonText: {
     fontSize: 14,
+    fontWeight: '700',
+    color: '#5B8DEE',
+  },
+  // Empty State
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 80,
+  },
+  emptyIconCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  emptyStateTitle: {
+    fontSize: 18,
     color: '#6B7280',
-    lineHeight: 20,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  emptyStateSubtitle: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginBottom: 24,
+  },
+  emptyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#5B8DEE',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  emptyButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });
 
