@@ -329,13 +329,6 @@ export default function MainTabNavigator() {
           tabBarLabel: TAB_CONFIG[ROUTES.PROFILE].label,
         }}
       />
-       {/* <Tab.Screen 
-        name={ROUTES.SUBSCRIPTION}
-        component={SubscriptionScreen}
-        options={{ 
-          tabBarLabel: TAB_CONFIG[ROUTES.SUBSCRIPTION].label,
-        }}
-      /> */}
     </Tab.Navigator>
   );
 }

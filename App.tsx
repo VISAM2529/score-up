@@ -9,7 +9,6 @@ import MainTabNavigator from './navigation/MainTabNavigator';
 import { StatusBar } from 'expo-status-bar';
 
 import './global.css';
-import SyllabusScreen from 'screens/SyllabusScreen';
 
 const Stack = createNativeStackNavigator();
 

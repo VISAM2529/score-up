@@ -1,188 +1,69 @@
 // screens/ResultsListScreen.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, FlatList, ScrollView, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const BASE_URL = 'https://scoreup-admin.vercel.app';
 
 interface Result {
-  id: number;
-  syllabus: string;
-  testName: string;
-  subject: string;
+  _id: string;
+  syllabusId: { name: string };
+  testId: { name: string };
+  subjectId: { name: string };
   score: number;
-  total: number;
+  totalQuestions: number;
   percentage: number;
   points: number;
-  date: string;
-  duration: number;
+  createdAt: string;
+  timeSpent: number;
   difficulty: 'Easy' | 'Medium' | 'Hard';
+  type: 'Mock' | 'Practice' | 'Chapter' | 'Previous Year';
   rank?: number;
-  icon: string;
 }
 
 const ResultsListScreen = () => {
   const navigation = useNavigation<any>();
   const [selectedFilter, setSelectedFilter] = useState<string>('All');
+  const [allResults, setAllResults] = useState<Result[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const filters = ['All', 'JEE', 'NEET', 'CET'];
 
-  // Rich results data
-  const allResults: Result[] = [
-    { 
-      id: 1, 
-      syllabus: 'JEE', 
-      testName: 'Full Mock Test 1',
-      subject: 'Physics',
-      score: 28, 
-      total: 30, 
-      percentage: 93,
-      points: 280, 
-      date: '2025-10-14',
-      duration: 42,
-      difficulty: 'Hard',
-      rank: 12,
-      icon: 'flask-outline'
-    },
-    { 
-      id: 2, 
-      syllabus: 'NEET', 
-      testName: 'Organic Chemistry Mastery',
-      subject: 'Chemistry',
-      score: 27, 
-      total: 35, 
-      percentage: 77,
-      points: 270,
-      date: '2025-10-13',
-      duration: 48,
-      difficulty: 'Hard',
-      rank: 45,
-      icon: 'beaker-outline'
-    },
-    { 
-      id: 3, 
-      syllabus: 'JEE', 
-      testName: 'Calculus Challenge',
-      subject: 'Mathematics',
-      score: 24, 
-      total: 30, 
-      percentage: 80,
-      points: 240,
-      date: '2025-10-12',
-      duration: 38,
-      difficulty: 'Medium',
-      rank: 28,
-      icon: 'calculator-outline'
-    },
-    { 
-      id: 4, 
-      syllabus: 'CET', 
-      testName: 'Mechanics Deep Dive',
-      subject: 'Physics',
-      score: 22, 
-      total: 30, 
-      percentage: 73,
-      points: 220,
-      date: '2025-10-11',
-      duration: 44,
-      difficulty: 'Medium',
-      rank: 56,
-      icon: 'flask-outline'
-    },
-    { 
-      id: 5, 
-      syllabus: 'NEET', 
-      testName: 'Botany Essentials',
-      subject: 'Biology',
-      score: 26, 
-      total: 30, 
-      percentage: 87,
-      points: 260,
-      date: '2025-10-10',
-      duration: 35,
-      difficulty: 'Easy',
-      rank: 18,
-      icon: 'leaf-outline'
-    },
-    { 
-      id: 6, 
-      syllabus: 'JEE', 
-      testName: 'Algebra Sprint',
-      subject: 'Mathematics',
-      score: 19, 
-      total: 25, 
-      percentage: 76,
-      points: 190,
-      date: '2025-10-09',
-      duration: 32,
-      difficulty: 'Medium',
-      rank: 38,
-      icon: 'calculator-outline'
-    },
-    { 
-      id: 7, 
-      syllabus: 'JEE', 
-      testName: 'Thermodynamics Practice',
-      subject: 'Physics',
-      score: 23, 
-      total: 25, 
-      percentage: 92,
-      points: 230,
-      date: '2025-10-08',
-      duration: 37,
-      difficulty: 'Easy',
-      rank: 8,
-      icon: 'flask-outline'
-    },
-    { 
-      id: 8, 
-      syllabus: 'NEET', 
-      testName: 'Inorganic Quick Test',
-      subject: 'Chemistry',
-      score: 15, 
-      total: 20, 
-      percentage: 75,
-      points: 150,
-      date: '2025-10-07',
-      duration: 28,
-      difficulty: 'Medium',
-      rank: 42,
-      icon: 'beaker-outline'
-    },
-    { 
-      id: 9, 
-      syllabus: 'CET', 
-      testName: 'Coordinate Geometry Test',
-      subject: 'Mathematics',
-      score: 17, 
-      total: 20, 
-      percentage: 85,
-      points: 170,
-      date: '2025-10-06',
-      duration: 26,
-      difficulty: 'Easy',
-      rank: 15,
-      icon: 'calculator-outline'
-    },
-    { 
-      id: 10, 
-      syllabus: 'JEE', 
-      testName: 'Electromagnetism Quiz',
-      subject: 'Physics',
-      score: 14, 
-      total: 20, 
-      percentage: 70,
-      points: 140,
-      date: '2025-10-05',
-      duration: 29,
-      difficulty: 'Hard',
-      rank: 67,
-      icon: 'flask-outline'
-    },
-  ];
+  useEffect(() => {
+    fetchResults();
+  }, []);
 
-  const results = selectedFilter === 'All' 
-    ? allResults 
-    : allResults.filter(result => result.syllabus === selectedFilter);
+  const fetchResults = async () => {
+    setIsLoading(true);
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await fetch(`${BASE_URL}/api/results`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setAllResults(data.results);
+      } else {
+        throw new Error(data.message || 'Failed to fetch results');
+      }
+    } catch (error) {
+      console.error('Fetch results error:', error);
+      Alert.alert('Error', 'Failed to load results. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const getDifficultyColor = (difficulty: string) => {
     switch(difficulty) {
@@ -219,13 +100,23 @@ const ResultsListScreen = () => {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
+  const getIcon = (subject: string) => {
+    switch(subject.toLowerCase()) {
+      case 'physics': return 'flask-outline';
+      case 'chemistry': return 'beaker-outline';
+      case 'mathematics': return 'calculator-outline';
+      case 'biology': return 'leaf-outline';
+      default: return 'book-outline';
+    }
+  };
+
   // Calculate overall stats
   const totalTests = allResults.length;
-  const avgScore = Math.round(
+  const avgScore = totalTests > 0 ? Math.round(
     allResults.reduce((acc, r) => acc + r.percentage, 0) / totalTests
-  );
+  ) : 0;
   const totalPoints = allResults.reduce((acc, r) => acc + r.points, 0);
-  const bestScore = Math.max(...allResults.map(r => r.percentage));
+  const bestScore = totalTests > 0 ? Math.max(...allResults.map(r => r.percentage)) : 0;
 
   const stats = [
     { label: 'Tests Taken', value: totalTests.toString(), icon: 'document-text-outline', color: '#4F46E5' },
@@ -233,6 +124,18 @@ const ResultsListScreen = () => {
     { label: 'Best Score', value: `${bestScore}%`, icon: 'trophy-outline', color: '#F59E0B' },
     { label: 'Total Points', value: totalPoints.toString(), icon: 'star-outline', color: '#EC4899' },
   ];
+
+  const results = selectedFilter === 'All' 
+    ? allResults 
+    : allResults.filter(result => result.syllabusId.name === selectedFilter);
+
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.emptyStateTitle}>Loading results...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -299,7 +202,7 @@ const ResultsListScreen = () => {
       {/* Results List */}
       <FlatList
         data={results}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => item._id}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => {
@@ -307,15 +210,16 @@ const ResultsListScreen = () => {
           return (
             <TouchableOpacity
               style={styles.resultCard}
-              onPress={() => navigation.navigate('Results', {
+              onPress={() => navigation.navigate('ResultDetail', {
+                resultId: item._id,
                 score: item.score,
-                total: item.total,
+                total: item.totalQuestions,
                 percentage: item.percentage,
                 points: item.points,
-                syllabus: item.syllabus,
-                testId: item.id,
-                testName: item.testName,
-                timeSpent: item.duration * 60
+                syllabus: item.syllabusId.name,
+                testId: item.testId._id,
+                testName: item.testId.name,
+                timeSpent: item.timeSpent
               })}
               activeOpacity={0.7}
             >
@@ -323,16 +227,16 @@ const ResultsListScreen = () => {
               <View style={styles.cardHeader}>
                 <View style={styles.cardHeaderLeft}>
                   <View style={styles.cardIconCircle}>
-                    <Ionicons name={item.icon} size={24} color="#4F46E5" />
+                    <Ionicons name={getIcon(item.subjectId.name)} size={24} color="#4F46E5" />
                   </View>
                   <View style={styles.cardTextContainer}>
                     <Text style={styles.cardTitle} numberOfLines={1}>
-                      {item.testName}
+                      {item.testId.name}
                     </Text>
                     <View style={styles.cardSubInfo}>
-                      <Text style={styles.cardSubject}>{item.subject}</Text>
+                      <Text style={styles.cardSubject}>{item.subjectId.name}</Text>
                       <View style={styles.dot} />
-                      <Text style={styles.cardSyllabus}>{item.syllabus}</Text>
+                      <Text style={styles.cardSyllabus}>{item.syllabusId.name}</Text>
                     </View>
                   </View>
                 </View>
@@ -359,11 +263,11 @@ const ResultsListScreen = () => {
               <View style={styles.detailsRow}>
                 <View style={styles.detailItem}>
                   <Ionicons name="checkmark-circle" size={14} color="#10B981" />
-                  <Text style={styles.detailText}>{item.score}/{item.total}</Text>
+                  <Text style={styles.detailText}>{item.score}/{item.totalQuestions}</Text>
                 </View>
                 <View style={styles.detailItem}>
                   <Ionicons name="time-outline" size={14} color="#6B7280" />
-                  <Text style={styles.detailText}>{item.duration}m</Text>
+                  <Text style={styles.detailText}>{Math.floor(item.timeSpent / 60)}m</Text>
                 </View>
                 <View style={styles.detailItem}>
                   <Ionicons name="star" size={14} color="#F59E0B" />
@@ -411,7 +315,7 @@ const ResultsListScreen = () => {
                     </Text>
                   </View>
                 </View>
-                <Text style={styles.dateText}>{formatDate(item.date)}</Text>
+                <Text style={styles.dateText}>{formatDate(item.createdAt)}</Text>
               </View>
             </TouchableOpacity>
           );

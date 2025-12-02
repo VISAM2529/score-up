@@ -1,90 +1,85 @@
-// screens/ResultDetailScreen.jsx
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+// screens/ResultDetailScreen.tsx
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import RenderHtml from 'react-native-render-html';
+import { useWindowDimensions } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const BASE_URL = 'https://scoreup-admin.vercel.app';
 
 const ResultDetailScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
-  const { score, total, percentage, testName } = route.params;
+  const { width } = useWindowDimensions();
+  const { resultId, score, total, percentage, points, syllabus, testId, testName, timeSpent } = route.params;
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [questions, setQuestions] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Sample questions with user answers and explanations
-  const questions = [
-    {
-      id: 1,
-      text: 'What is the SI unit of force?',
-      subject: 'Physics',
-      topic: 'Mechanics',
-      userAnswer: 'b',
-      options: [
-        { id: 'a', text: 'Joule', isCorrect: false },
-        { id: 'b', text: 'Newton', isCorrect: true },
-        { id: 'c', text: 'Watt', isCorrect: false },
-        { id: 'd', text: 'Pascal', isCorrect: false },
-      ],
-      explanation: 'The SI unit of force is Newton (N). It is named after Sir Isaac Newton. One Newton is the force required to accelerate a mass of one kilogram at a rate of one meter per second squared (1 N = 1 kg⋅m/s²).',
-    },
-    {
-      id: 2,
-      text: 'The velocity of light in vacuum is approximately:',
-      subject: 'Physics',
-      topic: 'Optics',
-      userAnswer: 'c',
-      options: [
-        { id: 'a', text: '3 × 10⁸ m/s', isCorrect: true },
-        { id: 'b', text: '3 × 10⁶ m/s', isCorrect: false },
-        { id: 'c', text: '3 × 10⁷ m/s', isCorrect: false },
-        { id: 'd', text: '3 × 10⁹ m/s', isCorrect: false },
-      ],
-      explanation: 'The speed of light in vacuum is approximately 3 × 10⁸ meters per second (299,792,458 m/s to be exact). This is a fundamental constant in physics, denoted by "c", and nothing can travel faster than light in vacuum.',
-    },
-    {
-      id: 3,
-      text: 'Which of the following is a scalar quantity?',
-      subject: 'Physics',
-      topic: 'Vectors',
-      userAnswer: 'c',
-      options: [
-        { id: 'a', text: 'Velocity', isCorrect: false },
-        { id: 'b', text: 'Force', isCorrect: false },
-        { id: 'c', text: 'Energy', isCorrect: true },
-        { id: 'd', text: 'Acceleration', isCorrect: false },
-      ],
-      explanation: 'Energy is a scalar quantity because it only has magnitude and no direction. Velocity, force, and acceleration are all vector quantities as they have both magnitude and direction.',
-    },
-    {
-      id: 4,
-      text: 'What is the atomic number of Carbon?',
-      subject: 'Chemistry',
-      topic: 'Periodic Table',
-      userAnswer: 'b',
-      options: [
-        { id: 'a', text: '4', isCorrect: false },
-        { id: 'b', text: '6', isCorrect: true },
-        { id: 'c', text: '8', isCorrect: false },
-        { id: 'd', text: '12', isCorrect: false },
-      ],
-      explanation: 'Carbon has an atomic number of 6, meaning it has 6 protons in its nucleus. Carbon is essential for life and forms the basis of organic chemistry. The atomic mass is approximately 12 (6 protons + 6 neutrons).',
-    },
-    {
-      id: 5,
-      text: 'Which gas is known as laughing gas?',
-      subject: 'Chemistry',
-      topic: 'Inorganic Chemistry',
-      userAnswer: 'a',
-      options: [
-        { id: 'a', text: 'Nitrogen dioxide', isCorrect: false },
-        { id: 'b', text: 'Nitrous oxide', isCorrect: true },
-        { id: 'c', text: 'Carbon monoxide', isCorrect: false },
-        { id: 'd', text: 'Sulfur dioxide', isCorrect: false },
-      ],
-      explanation: 'Nitrous oxide (N₂O) is known as laughing gas. It is used as an anesthetic and analgesic in medicine and dentistry. When inhaled, it can produce feelings of euphoria and laughter, hence the name.',
-    },
-  ];
+  useEffect(() => {
+    fetchResultDetails();
+  }, [resultId]);
+
+  const fetchResultDetails = async () => {
+    setIsLoading(true);
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      const response = await fetch(`${BASE_URL}/api/results/${resultId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      if (data.success) {
+        // Map the data to the required format
+        const mappedQuestions = data.result.testId.questions.map((q, index) => {
+          const userAnswer = data.result.answers[index]?.selectedOptionId || null;
+          return {
+            id: q._id,
+            text: q.text,
+            subject: data.result.subjectId.name,
+            topic: q.topic,
+            options: q.options.map(o => ({
+              id: o.id || o._id,
+              text: o.text,
+              isCorrect: o.isCorrect,
+            })),
+            userAnswer,
+            explanation: q.explanation || 'No explanation provided.', // Assuming explanation is in question model
+          };
+        });
+        setQuestions(mappedQuestions);
+      } else {
+        Alert.alert('Error', data.message || 'Failed to fetch result details');
+      }
+    } catch (error) {
+      console.error('Fetch result details error:', error);
+      Alert.alert('Error', 'Failed to load result details. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
+
+  if (questions.length === 0) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text>No questions available</Text>
+      </View>
+    );
+  }
 
   const currentQuestion = questions[currentQuestionIndex];
   const correctOption = currentQuestion.options.find(opt => opt.isCorrect);
@@ -109,16 +104,7 @@ const ResultDetailScreen = () => {
       <LinearGradient colors={['#5B8DEE', '#5B8DEE']} style={styles.header}>
         <View style={styles.headerRow}>
           <TouchableOpacity 
-            onPress={() => navigation.navigate('Results', {
-              score,
-              total,
-              percentage,
-              points: score * 10,
-              syllabus: 'JEE',
-              testId: 1,
-              testName,
-              timeSpent: 1800
-            })}
+            onPress={() => navigation.goBack()}
             style={styles.backButton}
           >
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
@@ -248,7 +234,13 @@ const ResultDetailScreen = () => {
                       <Text style={styles.optionLabel}>
                         {option.id.toUpperCase()}.
                       </Text>
-                      <Text style={styles.optionText}>{option.text}</Text>
+                      <View style={{ flex: 1 }}>
+                        <RenderHtml
+                          contentWidth={width - 80}
+                          source={{ html: option.text }}
+                          tagsStyles={{ body: styles.optionText }}
+                        />
+                      </View>
                     </View>
                   </View>
                 );
@@ -274,7 +266,13 @@ const ResultDetailScreen = () => {
               </LinearGradient>
               <Text style={styles.explanationTitle}>Explanation</Text>
             </View>
-            <Text style={styles.explanationText}>{currentQuestion.explanation}</Text>
+            <View style={{ flex: 1 }}>
+              <RenderHtml
+                contentWidth={width - 48}
+                source={{ html: currentQuestion.explanation }}
+                tagsStyles={{ body: styles.explanationText }}
+              />
+            </View>
           </LinearGradient>
         </View>
 
@@ -287,20 +285,39 @@ const ResultDetailScreen = () => {
                 styles.summaryBadge,
                 isCorrect ? styles.summaryBadgeCorrect : styles.summaryBadgeIncorrect
               ]}>
-                <Text style={[
-                  styles.summaryBadgeText,
-                  isCorrect ? styles.summaryBadgeTextCorrect : styles.summaryBadgeTextIncorrect
-                ]}>
-                  {userSelectedOption?.id.toUpperCase()}. {userSelectedOption?.text}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={[
+                    styles.summaryBadgeText,
+                    isCorrect ? styles.summaryBadgeTextCorrect : styles.summaryBadgeTextIncorrect
+                  ]}>
+                    {userSelectedOption ? `${userSelectedOption.id.toUpperCase()}. ` : 'No answer'}
+                  </Text>
+                  {userSelectedOption && (
+                    <RenderHtml
+                      contentWidth={width / 2 - 50}
+                      source={{ html: userSelectedOption.text }}
+                      tagsStyles={{ body: [
+                        styles.summaryBadgeText,
+                        isCorrect ? styles.summaryBadgeTextCorrect : styles.summaryBadgeTextIncorrect
+                      ] }}
+                    />
+                  )}
+                </View>
               </View>
             </View>
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>Correct Answer</Text>
               <View style={styles.summaryBadgeCorrect}>
-                <Text style={styles.summaryBadgeTextCorrect}>
-                  {correctOption?.id.toUpperCase()}. {correctOption?.text}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={styles.summaryBadgeTextCorrect}>
+                    {correctOption.id.toUpperCase()}. 
+                  </Text>
+                  <RenderHtml
+                    contentWidth={width / 2 - 50}
+                    source={{ html: correctOption.text }}
+                    tagsStyles={{ body: styles.summaryBadgeTextCorrect }}
+                  />
+                </View>
               </View>
             </View>
           </View>

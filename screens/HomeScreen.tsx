@@ -8,12 +8,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width - 40;
 
+const BASE_URL = 'https://scoreup-admin.vercel.app';
+
 const HomeScreen = () => {
   const navigation = useNavigation<any>();
-  const [selectedExam, setSelectedExam] = useState('CET');
   const [userName, setUserName] = useState('User');
   const [activeIndex, setActiveIndex] = useState(0);
   const [activeBottomIndex, setActiveBottomIndex] = useState(0);
+  const [exams, setExams] = useState<string[]>([]);
+  const [subscribedExams, setSubscribedExams] = useState<string[]>([]);
   const scrollViewRef = useRef<ScrollView>(null);
   const bottomScrollViewRef = useRef<ScrollView>(null);
 
@@ -33,10 +36,11 @@ const HomeScreen = () => {
     { id: 4, image: require('../assets/college4.jpg'), title: 'Dream Big, Achieve More', subtitle: 'Transform Your Future' },
   ];
 
-  // Fetch user data from AsyncStorage
+  // Fetch user data, all syllabuses, and subscribed syllabuses
   useEffect(() => {
-    const fetchUserData = async () => {
+    const fetchData = async () => {
       try {
+        // Fetch user data
         const userDataString = await AsyncStorage.getItem('user');
         if (userDataString) {
           const userData = JSON.parse(userDataString);
@@ -51,12 +55,43 @@ const HomeScreen = () => {
             setUserName(emailUsername);
           }
         }
+
+        // Fetch all syllabuses
+        const syllabiRes = await fetch(`${BASE_URL}/api/syllabus`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        const syllabiData = await syllabiRes.json();
+        if (syllabiData.success) {
+          const allExamNames = syllabiData.syllabi.map(s => s.name);
+
+          // Fetch subscribed syllabuses
+          const subDataString = await AsyncStorage.getItem('userSubscriptionData');
+          let subscribed = [];
+          if (subDataString) {
+            const subData = JSON.parse(subDataString);
+            subscribed = subData.syllabusNames.split(', ');
+            setSubscribedExams(subscribed);
+          }
+
+          // Sort exams: subscribed first, then others
+          const otherExams = allExamNames.filter(e => !subscribed.includes(e));
+          const sortedExams = [...subscribed, ...otherExams];
+          setExams(sortedExams);
+        } else {
+          // Fallback to static if fetch fails
+          const fallbackExams = ['CET', 'JEE', 'NEET'];
+          setExams(fallbackExams);
+        }
       } catch (error) {
-        console.error('Error fetching user data:', error);
+        console.error('Error fetching data:', error);
+        // Fallback to static on error
+        const fallbackExams = ['CET', 'JEE', 'NEET'];
+        setExams(fallbackExams);
       }
     };
 
-    fetchUserData();
+    fetchData();
   }, []);
 
   // Auto scroll top carousel
@@ -103,7 +138,13 @@ const HomeScreen = () => {
     setActiveBottomIndex(index);
   };
 
-  const examTabs = ['CET', 'JEE', 'NEET'];
+  const handleExamPress = (exam: string) => {
+    if (subscribedExams.includes(exam)) {
+      navigation.navigate('Tests', { screen: 'TestList', params: { syllabus: exam } });
+    } else {
+      navigation.navigate('Subscription');
+    }
+  };
 
   const recentPractice = [
     { 
@@ -219,32 +260,28 @@ const HomeScreen = () => {
         {/* Exam Tabs */}
         <View style={styles.examTabsContainer}>
           <View style={styles.examTabsRow}>
-            {examTabs.map((exam) => (
+            {exams.map((exam) => (
               <TouchableOpacity
                 key={exam}
                 style={[
                   styles.examTab,
-                  selectedExam === exam && styles.examTabActive
+                  subscribedExams.includes(exam) && styles.examTabActive
                 ]}
-                onPress={() => setSelectedExam(exam)}
+                onPress={() => handleExamPress(exam)}
               >
                 <Ionicons 
                   name="school" 
                   size={18} 
-                  color={selectedExam === exam ? '#FFFFFF' : '#9CA3AF'} 
+                  color={subscribedExams.includes(exam) ? '#FFFFFF' : '#9CA3AF'} 
                 />
                 <Text style={[
                   styles.examTabText,
-                  selectedExam === exam && styles.examTabTextActive
+                  subscribedExams.includes(exam) && styles.examTabTextActive
                 ]}>
                   {exam}
                 </Text>
               </TouchableOpacity>
             ))}
-            <TouchableOpacity style={styles.examTab}>
-              <Ionicons name="school" size={18} color="#9CA3AF" />
-              <Text style={styles.examTabText}>JEE</Text>
-            </TouchableOpacity>
           </View>
         </View>
 
@@ -275,55 +312,6 @@ const HomeScreen = () => {
             </View>
           ))}
         </View>
-
-        {/* Bottom Banner Carousel */}
-        <View style={styles.carouselContainer}>
-          <ScrollView
-            ref={bottomScrollViewRef}
-            horizontal
-            pagingEnabled={false}
-            showsHorizontalScrollIndicator={false}
-            onScroll={handleBottomScroll}
-            scrollEventThrottle={16}
-            snapToInterval={CARD_WIDTH + 20}
-            decelerationRate="fast"
-            contentContainerStyle={styles.carouselContent}
-          >
-            {bottomBanners.map((banner, index) => (
-              <View key={banner.id} style={[styles.bannerCard, { marginLeft: index === 0 ? 20 : 0 }]}>
-                <Image 
-                  source={banner.image} 
-                  style={styles.bannerImage}
-                  resizeMode="cover"
-                />
-                <LinearGradient
-                  colors={['rgba(0,0,0,0.7)', 'rgba(0,0,0,0.3)']}
-                  style={styles.bannerOverlay}
-                >
-                  <Text style={styles.bannerTitle}>{banner.title}</Text>
-                  <Text style={styles.bannerSubtitle}>{banner.subtitle}</Text>
-                  <TouchableOpacity style={styles.startButton}>
-                    <Text style={styles.startButtonText}>Explore Now</Text>
-                  </TouchableOpacity>
-                </LinearGradient>
-              </View>
-            ))}
-          </ScrollView>
-          
-          {/* Carousel Indicators */}
-          <View style={styles.carouselIndicators}>
-            {bottomBanners.map((_, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.indicator,
-                  activeBottomIndex === index && styles.indicatorActive
-                ]}
-              />
-            ))}
-          </View>
-        </View>
-
         {/* Performance Summary Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
