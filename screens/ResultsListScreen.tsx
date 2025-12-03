@@ -44,7 +44,7 @@ const ResultsListScreen = () => {
         throw new Error('No authentication token found');
       }
 
-      const response = await fetch(`${BASE_URL}/api/results`, {
+      const response = await fetch(`${BASE_URL}/api/result`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

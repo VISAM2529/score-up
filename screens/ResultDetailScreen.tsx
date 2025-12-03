@@ -1,6 +1,5 @@
-// screens/ResultDetailScreen.tsx
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -10,73 +9,139 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BASE_URL = 'https://scoreup-admin.vercel.app';
 
+interface Option {
+  id: string;
+  text: string;
+  isCorrect: boolean;
+}
+
+interface Question {
+  id: string;
+  text: string;
+  subject: string;
+  topic: string;
+  options: Option[];
+  userAnswer: string | null;
+  explanation: string;
+}
+
 const ResultDetailScreen = () => {
-  const route = useRoute();
-  const navigation = useNavigation();
+  const route = useRoute<any>()
+  const navigation = useNavigation<any>();
   const { width } = useWindowDimensions();
-  const { resultId, score, total, percentage, points, syllabus, testId, testName, timeSpent } = route.params;
+  const { resultId } = route.params;
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [questions, setQuestions] = useState([]);
+  const [questions, setQuestions] = useState<Question[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [resultData, setResultData] = useState<any>(null);
 
   useEffect(() => {
     fetchResultDetails();
   }, [resultId]);
 
-  const fetchResultDetails = async () => {
-    setIsLoading(true);
-    try {
-      const token = await AsyncStorage.getItem('userToken');
-      const response = await fetch(`${BASE_URL}/api/results/${resultId}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      const data = await response.json();
-      if (data.success) {
-        // Map the data to the required format
-        const mappedQuestions = data.result.testId.questions.map((q, index) => {
-          const userAnswer = data.result.answers[index]?.selectedOptionId || null;
-          return {
-            id: q._id,
-            text: q.text,
-            subject: data.result.subjectId.name,
-            topic: q.topic,
-            options: q.options.map(o => ({
-              id: o.id || o._id,
-              text: o.text,
-              isCorrect: o.isCorrect,
-            })),
-            userAnswer,
-            explanation: q.explanation || 'No explanation provided.', // Assuming explanation is in question model
-          };
-        });
-        setQuestions(mappedQuestions);
-      } else {
-        Alert.alert('Error', data.message || 'Failed to fetch result details');
-      }
-    } catch (error) {
-      console.error('Fetch result details error:', error);
-      Alert.alert('Error', 'Failed to load result details. Please try again.');
-    } finally {
-      setIsLoading(false);
+ const fetchResultDetails = async () => {
+  setIsLoading(true);
+  try {
+    // Get user data from AsyncStorage
+    const userDataString = await AsyncStorage.getItem('user');
+    
+    if (!userDataString) {
+      Alert.alert('Error', 'Please login again');
+      navigation.goBack();
+      return;
     }
-  };
+
+    // Parse user data to get userId
+    const userData = JSON.parse(userDataString);
+    const userId = userData.user?.id;
+    const token = userData.token;
+
+    console.log("User ID:", userId);
+    console.log("Token:", token);
+
+    if (!userId) {
+      Alert.alert('Error', 'User ID not found. Please login again.');
+      navigation.goBack();
+      return;
+    }
+
+    // Fetch result details from API
+    const response = await fetch(`${BASE_URL}/api/result/${resultId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }), // Only add if token exists
+        // If backend needs userId in header, add it:
+        // 'x-user-id': userId,
+      },
+    });
+
+    console.log("Response Status:", response.status);
+    
+    const data = await response.json();
+    console.log("Response Data:", data);
+    
+    if (data.success) {
+      setResultData(data.result);
+      
+      // Map the questions with user answers
+      const mappedQuestions = data.result.testId.questions.map((q: any, index: number) => {
+        const userAnswer = data.result.answers[index]?.selectedOptionId || null;
+        
+        // Handle nested options if necessary
+        const rawOptions = Array.isArray(q?.options?.[0]) ? q.options[0] : q.options || [];
+        
+        return {
+          id: q._id,
+          text: q.text,
+          subject: data.result.subjectId.name,
+          topic: q.topic,
+          options: rawOptions.map((o: any) => ({
+            id: o.id || o._id,
+            text: o.text,
+            isCorrect: o.isCorrect,
+          })),
+          userAnswer,
+          explanation: q.explanation || 'No explanation provided.',
+        };
+      });
+      
+      console.log("Mapped Questions:", mappedQuestions.length);
+      setQuestions(mappedQuestions);
+    } else {
+      Alert.alert('Error', data.message || 'Failed to fetch result details');
+      navigation.goBack();
+    }
+  } catch (error) {
+    console.error('Fetch result details error:', error);
+    Alert.alert('Error', 'Failed to load result details. Please try again.');
+    navigation.goBack();
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>Loading...</Text>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#5B8DEE" />
+        <Text style={styles.loadingText}>Loading results...</Text>
       </View>
     );
   }
 
   if (questions.length === 0) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>No questions available</Text>
+      <View style={styles.loadingContainer}>
+        <Ionicons name="alert-circle-outline" size={64} color="#9CA3AF" />
+        <Text style={styles.noDataText}>No questions available</Text>
+        <TouchableOpacity 
+          style={styles.backButtonFallback}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.backButtonFallbackText}>Go Back</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -96,6 +161,44 @@ const ResultDetailScreen = () => {
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(currentQuestionIndex - 1);
     }
+  };
+
+  const cleanHtmlContent = (html: string) => {
+    if (!html) return '<p></p>';
+    return html
+      .replace(/&nbsp;/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim() || '<p></p>';
+  };
+
+  const htmlOptionStyle = {
+    body: {
+      fontSize: 14,
+      color: '#374151',
+      fontWeight: '500',
+      margin: 0,
+      padding: 0,
+    },
+    p: {
+      margin: 0,
+      padding: 0,
+    },
+  };
+
+  const htmlExplanationStyle = {
+    body: {
+      fontSize: 14,
+      color: '#6B7280',
+      lineHeight: 22,
+      fontWeight: '500',
+      margin: 0,
+      padding: 0,
+    },
+    p: {
+      margin: 0,
+      padding: 0,
+      marginBottom: 8,
+    },
   };
 
   return (
@@ -118,7 +221,9 @@ const ResultDetailScreen = () => {
           </View>
 
           <View style={styles.scoreIndicator}>
-            <Text style={styles.scoreText}>{score}/{total}</Text>
+            <Text style={styles.scoreText}>
+              {resultData?.score}/{resultData?.totalQuestions}
+            </Text>
           </View>
         </View>
 
@@ -199,9 +304,26 @@ const ResultDetailScreen = () => {
             end={{ x: 1, y: 1 }}
             style={styles.questionGradient}
           >
-            <Text style={styles.questionText}>
-              Q{currentQuestionIndex + 1}. {currentQuestion.text}
-            </Text>
+            <View style={styles.questionTextContainer}>
+              <Text style={styles.questionNumber}>Q{currentQuestionIndex + 1}. </Text>
+              <View style={{ flex: 1 }}>
+                <RenderHtml
+                  contentWidth={width - 80}
+                  source={{ html: cleanHtmlContent(currentQuestion.text) }}
+                  tagsStyles={{
+                    body: {
+                      fontSize: 17,
+                      fontWeight: '700',
+                      color: '#111827',
+                      lineHeight: 26,
+                      margin: 0,
+                      padding: 0,
+                    },
+                    p: { margin: 0, padding: 0 },
+                  }}
+                />
+              </View>
+            </View>
             <Text style={styles.questionSubtext}>Choose wisely, genius!</Text>
 
             {/* Options */}
@@ -211,7 +333,7 @@ const ResultDetailScreen = () => {
                 const isCorrectAnswer = option.isCorrect;
                 
                 let optionStyle = styles.optionDefault;
-                let iconName = 'radio-button-off';
+                let iconName: any = 'radio-button-off';
                 let iconColor = '#D1D5DB';
 
                 if (isCorrectAnswer) {
@@ -236,9 +358,9 @@ const ResultDetailScreen = () => {
                       </Text>
                       <View style={{ flex: 1 }}>
                         <RenderHtml
-                          contentWidth={width - 80}
-                          source={{ html: option.text }}
-                          tagsStyles={{ body: styles.optionText }}
+                          contentWidth={width - 140}
+                          source={{ html: cleanHtmlContent(option.text) }}
+                          tagsStyles={htmlOptionStyle}
                         />
                       </View>
                     </View>
@@ -266,13 +388,11 @@ const ResultDetailScreen = () => {
               </LinearGradient>
               <Text style={styles.explanationTitle}>Explanation</Text>
             </View>
-            <View style={{ flex: 1 }}>
-              <RenderHtml
-                contentWidth={width - 48}
-                source={{ html: currentQuestion.explanation }}
-                tagsStyles={{ body: styles.explanationText }}
-              />
-            </View>
+            <RenderHtml
+              contentWidth={width - 88}
+              source={{ html: cleanHtmlContent(currentQuestion.explanation) }}
+              tagsStyles={htmlExplanationStyle}
+            />
           </LinearGradient>
         </View>
 
@@ -285,38 +405,51 @@ const ResultDetailScreen = () => {
                 styles.summaryBadge,
                 isCorrect ? styles.summaryBadgeCorrect : styles.summaryBadgeIncorrect
               ]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Text style={[
-                    styles.summaryBadgeText,
-                    isCorrect ? styles.summaryBadgeTextCorrect : styles.summaryBadgeTextIncorrect
-                  ]}>
-                    {userSelectedOption ? `${userSelectedOption.id.toUpperCase()}. ` : 'No answer'}
+                {userSelectedOption ? (
+                  <View style={styles.summaryBadgeContent}>
+                    <Text style={[
+                      styles.summaryBadgeLabel,
+                      isCorrect ? styles.summaryBadgeTextCorrect : styles.summaryBadgeTextIncorrect
+                    ]}>
+                      {userSelectedOption.id.toUpperCase()}.
+                    </Text>
+                    <View style={{ flex: 1 }}>
+                      <RenderHtml
+                        contentWidth={width / 2 - 70}
+                        source={{ html: cleanHtmlContent(userSelectedOption.text) }}
+                        tagsStyles={{
+                          body: [
+                            styles.summaryBadgeText,
+                            isCorrect ? styles.summaryBadgeTextCorrect : styles.summaryBadgeTextIncorrect
+                          ]
+                        }}
+                      />
+                    </View>
+                  </View>
+                ) : (
+                  <Text style={[styles.summaryBadgeText, styles.summaryBadgeTextIncorrect]}>
+                    No answer
                   </Text>
-                  {userSelectedOption && (
-                    <RenderHtml
-                      contentWidth={width / 2 - 50}
-                      source={{ html: userSelectedOption.text }}
-                      tagsStyles={{ body: [
-                        styles.summaryBadgeText,
-                        isCorrect ? styles.summaryBadgeTextCorrect : styles.summaryBadgeTextIncorrect
-                      ] }}
-                    />
-                  )}
-                </View>
+                )}
               </View>
             </View>
+            
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>Correct Answer</Text>
               <View style={styles.summaryBadgeCorrect}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Text style={styles.summaryBadgeTextCorrect}>
-                    {correctOption.id.toUpperCase()}. 
+                <View style={styles.summaryBadgeContent}>
+                  <Text style={[styles.summaryBadgeLabel, styles.summaryBadgeTextCorrect]}>
+                    {correctOption?.id.toUpperCase()}.
                   </Text>
-                  <RenderHtml
-                    contentWidth={width / 2 - 50}
-                    source={{ html: correctOption.text }}
-                    tagsStyles={{ body: styles.summaryBadgeTextCorrect }}
-                  />
+                  <View style={{ flex: 1 }}>
+                    <RenderHtml
+                      contentWidth={width / 2 - 70}
+                      source={{ html: cleanHtmlContent(correctOption?.text || '') }}
+                      tagsStyles={{
+                        body: [styles.summaryBadgeText, styles.summaryBadgeTextCorrect]
+                      }}
+                    />
+                  </View>
                 </View>
               </View>
             </View>
@@ -334,7 +467,38 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
-  // Fixed Header
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    padding: 24,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6B7280',
+    fontWeight: '600',
+  },
+  noDataText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6B7280',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  backButtonFallback: {
+    marginTop: 24,
+    backgroundColor: '#5B8DEE',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 10,
+  },
+  backButtonFallbackText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
   header: {
     paddingTop: 60,
     paddingHorizontal: 24,
@@ -381,7 +545,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
-  // Navigation Row
   navRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -410,7 +573,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 3,
   },
-  // Scrollable Content
   scrollView: {
     flex: 1,
   },
@@ -419,7 +581,6 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 32,
   },
-  // Status Badge
   statusBadgeContainer: {
     marginBottom: 16,
   },
@@ -451,7 +612,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#EF4444',
   },
-  // Subject Tag
   subjectTag: {
     alignSelf: 'flex-start',
     backgroundColor: '#EEF2FF',
@@ -465,7 +625,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#5B8DEE',
   },
-  // Question Card
   questionCard: {
     borderRadius: 18,
     overflow: 'hidden',
@@ -476,12 +635,16 @@ const styles = StyleSheet.create({
   questionGradient: {
     padding: 20,
   },
-  questionText: {
+  questionTextContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  questionNumber: {
     fontSize: 17,
     fontWeight: '700',
     color: '#111827',
-    lineHeight: 26,
-    marginBottom: 8,
+    marginRight: 4,
   },
   questionSubtext: {
     fontSize: 13,
@@ -489,7 +652,6 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginBottom: 20,
   },
-  // Options
   optionsContainer: {
     gap: 12,
   },
@@ -521,13 +683,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#6B7280',
   },
-  optionText: {
-    fontSize: 15,
-    color: '#374151',
-    flex: 1,
-    fontWeight: '500',
-  },
-  // Explanation Card
   explanationCard: {
     borderRadius: 18,
     overflow: 'hidden',
@@ -556,13 +711,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111827',
   },
-  explanationText: {
-    fontSize: 14,
-    color: '#6B7280',
-    lineHeight: 22,
-    fontWeight: '500',
-  },
-  // Summary Card
   summaryCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
@@ -584,18 +732,32 @@ const styles = StyleSheet.create({
   },
   summaryBadge: {
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 10,
   },
   summaryBadgeCorrect: {
     backgroundColor: '#D1FAE5',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
   },
   summaryBadgeIncorrect: {
     backgroundColor: '#FEE2E2',
   },
+  summaryBadgeContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  summaryBadgeLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
   summaryBadgeText: {
     fontSize: 13,
     fontWeight: '600',
+    margin: 0,
+    padding: 0,
   },
   summaryBadgeTextCorrect: {
     color: '#10B981',
