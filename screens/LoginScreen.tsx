@@ -39,8 +39,20 @@ const LoginScreen = () => {
       Alert.alert('Invalid Email', 'Please enter a valid email address');
       return;
     }
-    
+
     console.log('Sending OTP to:', email);
+
+    // HARDCODED LOGIN: Bypass Send OTP API for specific email
+    if (email.toLowerCase() === 'google@gmail.com') {
+      setIsLoading(true);
+      setTimeout(() => {
+        setShowOtp(true);
+        setIsLoading(false);
+        Alert.alert('OTP Sent', `Verification code sent to ${email}`);
+      }, 1000);
+      return;
+    }
+
     setIsLoading(true);
     try {
       const response = await fetch('https://scoreup-admin.vercel.app/api/public/auth/email-otp/send', {
@@ -69,64 +81,126 @@ const LoginScreen = () => {
     }
   };
 
-const handleVerifyOTP = async () => {
-  if (otp.length !== 6) {
-    Alert.alert('Invalid OTP', 'Please enter a 6-digit OTP');
-    return;
-  }
-
-  console.log('Verifying OTP:', email, otp);
-  setIsLoading(true);
-
-  try {
-    const response = await fetch(
-      'https://scoreup-admin.vercel.app/api/public/auth/email-otp/verify',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp }),
-      }
-    );
-
-    const data = await response.json();
-    console.log("Verify Response:", data);
-
-    if (response.ok) {
-      // ✅ Store user data in AsyncStorage (localStorage equivalent)
-      const userData = {
-        email: email,
-        token: data?.token ?? null,
-        user: data?.user ?? null,
-        loginTime: new Date().toISOString(),
-      };
-
-      // Store as JSON string
-      await AsyncStorage.setItem('user', JSON.stringify(userData));
-      
-      // Verify storage
-      const storedData = await AsyncStorage.getItem('user');
-      console.log('User data stored in AsyncStorage:', storedData);
-
-      Alert.alert('Success', 'Login successful!');
-
-      navigation.replace('Main');
-    } else {
-      Alert.alert('Error', data.message || 'Invalid OTP');
+  const handleVerifyOTP = async () => {
+    if (otp.length !== 6) {
+      Alert.alert('Invalid OTP', 'Please enter a 6-digit OTP');
+      return;
     }
-  } catch (error) {
-    console.error('Verify OTP Error:', error);
-    Alert.alert('Error', 'Network error. Please try again.');
-  } finally {
-    setIsLoading(false);
-  }
-};
+
+    console.log('Verifying OTP:', email, otp);
+
+    // HARDCODED LOGIN: Bypass Verify OTP API for specific email and OTP
+    if (email.toLowerCase() === 'google@gmail.com' && otp === '675432') {
+      setIsLoading(true);
+      console.log('Detected hardcoded login credentials. Logging in as Google Reviewer...');
+
+      try {
+        // Fetch all syllabi to give full access
+        let allSyllabi = [];
+        try {
+          console.log('Fetching all syllabi for hardcoded access...');
+          const syllabusRes = await fetch('https://scoreup-admin.vercel.app/api/syllabus');
+          const syllabusData = await syllabusRes.json();
+          if (syllabusData.success && Array.isArray(syllabusData.syllabi)) {
+            // Map to the structure expected by TestListScreen: { _id, name }
+            allSyllabi = syllabusData.syllabi.map((s: any) => ({ _id: s._id, name: s.name }));
+            console.log(`Fetched ${allSyllabi.length} syllabi for hardcoded access.`);
+          }
+        } catch (err) {
+          console.error('Failed to fetch syllabi for hardcoded login:', err);
+        }
+
+        // Mock user data for hardcoded login
+        const mockUserData = {
+          email: email,
+          token: 'mock-jwt-token-google-play-review',
+          user: {
+            _id: 'mock_user_id_12345',
+            name: 'Google Reviewer',
+            email: email,
+            role: 'user',
+            isVerified: true,
+            subscription: {
+              status: 'Active',
+              isExpired: false,
+              // Set expiry far in the future (10 years)
+              expiryDate: new Date(new Date().setFullYear(new Date().getFullYear() + 10)).toISOString(),
+              plan: 'Premium',
+              subscriptionDetails: {
+                // Grant access to ALL syllabi found
+                syllabusIds: allSyllabi
+              }
+            }
+          },
+          loginTime: new Date().toISOString(),
+        };
+
+        await AsyncStorage.setItem('user', JSON.stringify(mockUserData));
+        console.log('Hardcoded login successful, user data stored');
+
+        setIsLoading(false);
+        Alert.alert('Success', 'Login successful!');
+        navigation.replace('Main');
+      } catch (error) {
+        console.error('Hardcoded login error:', error);
+        setIsLoading(false);
+        Alert.alert('Error', 'Failed to save login session');
+      }
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(
+        'https://scoreup-admin.vercel.app/api/public/auth/email-otp/verify',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, otp }),
+        }
+      );
+
+      const data = await response.json();
+      console.log("Verify Response:", data);
+
+      if (response.ok) {
+        // ✅ Store user data in AsyncStorage (localStorage equivalent)
+        const userData = {
+          email: email,
+          token: data?.token ?? null,
+          user: data?.user ?? null,
+          loginTime: new Date().toISOString(),
+
+        };
+
+        // Store as JSON string
+        await AsyncStorage.setItem('user', JSON.stringify(userData));
+
+        // Verify storage
+        const storedData = await AsyncStorage.getItem('user');
+        console.log('User data stored in AsyncStorage:', storedData);
+
+        Alert.alert('Success', 'Login successful!');
+
+        navigation.replace('Main');
+      } else {
+        Alert.alert('Error', data.message || 'Invalid OTP');
+      }
+    } catch (error) {
+      console.error('Verify OTP Error:', error);
+      Alert.alert('Error', 'Network error. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     const checkUserLoggedIn = async () => {
       try {
         const userDataString = await AsyncStorage.getItem('user');
         console.log('Checking stored user data:', userDataString);
-        
+
         if (userDataString) {
           const userData = JSON.parse(userDataString);
           console.log('User already logged in:', userData);
@@ -178,14 +252,14 @@ const handleVerifyOTP = async () => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent} 
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         bounces={false}
         keyboardShouldPersistTaps="handled"
       >
-        <LinearGradient 
-          colors={['#759BFD', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#759BFD']} 
+        <LinearGradient
+          colors={['#759BFD', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#759BFD']}
           locations={[0, 0.25, 0.38, 0.44, 0.50, 0.68, 1]}
           style={styles.gradient}
           start={{ x: 0, y: 0 }}
@@ -197,8 +271,8 @@ const handleVerifyOTP = async () => {
               {/* Logo Section */}
               <View style={styles.logoContainer}>
                 <View style={styles.logoImageWrapper}>
-                  <Image 
-                    source={require('../assets/logo.jpg')} 
+                  <Image
+                    source={require('../assets/logo.jpg')}
                     style={styles.logoImage}
                     resizeMode="contain"
                   />
@@ -216,7 +290,7 @@ const handleVerifyOTP = async () => {
                 <View style={styles.formSection}>
                   <Text style={styles.formTitle}>Login</Text>
                   <Text style={styles.formSubtitle}>Enter your email address to continue!</Text>
-                  
+
                   <View style={[
                     styles.inputContainer,
                     isEmailFocused && styles.inputContainerFocused
@@ -255,7 +329,7 @@ const handleVerifyOTP = async () => {
                   <Text style={styles.formSubtitle}>
                     Enter the code sent to {email}
                   </Text>
-                  
+
                   <View style={[
                     styles.inputContainer,
                     isOtpFocused && styles.inputContainerFocused
@@ -287,13 +361,13 @@ const handleVerifyOTP = async () => {
                   </TouchableOpacity>
 
                   <View style={styles.otpActions}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       onPress={handleResendOTP}
                       disabled={isLoading}
                     >
                       <Text style={styles.linkText}>{isLoading ? 'Resending...' : 'Resend OTP'}</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       onPress={() => {
                         setShowOtp(false);
                         setOtp('');
@@ -317,10 +391,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#759BFD',
   },
-  scrollContent: { 
-    flexGrow: 1 
+  scrollContent: {
+    flexGrow: 1
   },
-  gradient: { 
+  gradient: {
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 20,
@@ -335,7 +409,7 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     padding: 32,
   },
-  
+
   // Logo Styles
   logoContainer: {
     alignItems: 'center',
@@ -358,7 +432,7 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
   },
-  
+
   // Title Section
   titleSection: {
     alignItems: 'center',
@@ -375,7 +449,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
   },
-  
+
   // Form Section
   formSection: {
     width: '100%',
@@ -436,7 +510,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  
+
   // OTP Actions
   otpActions: {
     flexDirection: 'row',

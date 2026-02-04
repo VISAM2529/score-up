@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert, ActivityIn
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import RenderHtml from 'react-native-render-html';
+import { WebView } from 'react-native-webview';
 import { useWindowDimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -25,6 +25,472 @@ interface Question {
   explanation: string;
 }
 
+// Question renderer with MathJax
+const QuestionRenderer = ({ html }: { html: string }) => {
+  const [height, setHeight] = useState(100);
+  
+  const mathJaxHtml = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+        <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+        <script>
+          window.MathJax = {
+            tex: {
+              inlineMath: [['\\\\(', '\\\\)']],
+              displayMath: [['\\\\[', '\\\\]']],
+              processEscapes: true
+            },
+            svg: {
+              fontCache: 'global'
+            },
+            startup: {
+              ready: () => {
+                MathJax.startup.defaultReady();
+                MathJax.startup.promise.then(() => {
+                  window.ReactNativeWebView.postMessage(JSON.stringify({
+                    height: document.body.scrollHeight
+                  }));
+                });
+              }
+            }
+          };
+        </script>
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-size: 17px;
+            color: #111827;
+            font-weight: 700;
+            line-height: 1.6;
+            padding: 4px;
+            overflow-x: hidden;
+            word-wrap: break-word;
+          }
+          p {
+            margin: 0;
+            padding: 0;
+          }
+          .math-formula {
+            background: #e6f7ff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin: 0 2px;
+            display: inline-block;
+          }
+          sub {
+            font-size: 0.8em;
+            vertical-align: sub;
+          }
+          sup {
+            font-size: 0.8em;
+            vertical-align: super;
+          }
+          strong, b {
+            font-weight: 700;
+          }
+          em, i {
+            font-style: italic;
+          }
+          img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 8px 0;
+          }
+        </style>
+      </head>
+      <body>
+        ${html}
+      </body>
+    </html>
+  `;
+
+  const handleMessage = (event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.height) {
+        setHeight(data.height + 20);
+      }
+    } catch (e) {
+      console.log('Error parsing message:', e);
+    }
+  };
+
+  return (
+    <WebView
+      source={{ html: mathJaxHtml }}
+      style={{ height, backgroundColor: 'transparent' }}
+      scrollEnabled={false}
+      showsVerticalScrollIndicator={false}
+      showsHorizontalScrollIndicator={false}
+      originWhitelist={['*']}
+      javaScriptEnabled={true}
+      domStorageEnabled={true}
+      startInLoadingState={false}
+      androidLayerType="hardware"
+      mixedContentMode="compatibility"
+      onMessage={handleMessage}
+      onShouldStartLoadWithRequest={() => true}
+    />
+  );
+};
+
+// Option renderer with MathJax
+const OptionRenderer = ({ html }: { html: string }) => {
+  const [height, setHeight] = useState(50);
+  
+  const mathJaxHtml = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+        <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+        <script>
+          window.MathJax = {
+            tex: {
+              inlineMath: [['\\\\(', '\\\\)']],
+              displayMath: [['\\\\[', '\\\\]']],
+              processEscapes: true
+            },
+            svg: {
+              fontCache: 'global'
+            },
+            startup: {
+              ready: () => {
+                MathJax.startup.defaultReady();
+                MathJax.startup.promise.then(() => {
+                  window.ReactNativeWebView.postMessage(JSON.stringify({
+                    height: document.body.scrollHeight
+                  }));
+                });
+              }
+            }
+          };
+        </script>
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-size: 14px;
+            color: #374151;
+            font-weight: 500;
+            line-height: 1.6;
+            padding: 4px;
+            overflow-x: hidden;
+            word-wrap: break-word;
+          }
+          p {
+            margin: 0;
+            padding: 0;
+          }
+          .math-formula {
+            background: #e6f7ff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin: 0 2px;
+            display: inline-block;
+          }
+          sub {
+            font-size: 0.8em;
+            vertical-align: sub;
+          }
+          sup {
+            font-size: 0.8em;
+            vertical-align: super;
+          }
+          strong, b {
+            font-weight: 700;
+          }
+          em, i {
+            font-style: italic;
+          }
+          img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 8px 0;
+          }
+        </style>
+      </head>
+      <body>
+        ${html}
+      </body>
+    </html>
+  `;
+
+  const handleMessage = (event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.height) {
+        setHeight(Math.max(50, data.height + 20));
+      }
+    } catch (e) {
+      console.log('Error parsing message:', e);
+    }
+  };
+
+  return (
+    <WebView
+      source={{ html: mathJaxHtml }}
+      style={{ height, backgroundColor: 'transparent' }}
+      scrollEnabled={false}
+      showsVerticalScrollIndicator={false}
+      showsHorizontalScrollIndicator={false}
+      originWhitelist={['*']}
+      javaScriptEnabled={true}
+      domStorageEnabled={true}
+      startInLoadingState={false}
+      androidLayerType="hardware"
+      mixedContentMode="compatibility"
+      onMessage={handleMessage}
+      onShouldStartLoadWithRequest={() => true}
+    />
+  );
+};
+
+// Explanation renderer with MathJax
+const ExplanationRenderer = ({ html }: { html: string }) => {
+  const [height, setHeight] = useState(80);
+  
+  const mathJaxHtml = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+        <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+        <script>
+          window.MathJax = {
+            tex: {
+              inlineMath: [['\\\\(', '\\\\)']],
+              displayMath: [['\\\\[', '\\\\]']],
+              processEscapes: true
+            },
+            svg: {
+              fontCache: 'global'
+            },
+            startup: {
+              ready: () => {
+                MathJax.startup.defaultReady();
+                MathJax.startup.promise.then(() => {
+                  window.ReactNativeWebView.postMessage(JSON.stringify({
+                    height: document.body.scrollHeight
+                  }));
+                });
+              }
+            }
+          };
+        </script>
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-size: 14px;
+            color: #6B7280;
+            font-weight: 500;
+            line-height: 1.6;
+            padding: 4px;
+            overflow-x: hidden;
+            word-wrap: break-word;
+          }
+          p {
+            margin: 0 0 8px 0;
+            padding: 0;
+          }
+          .math-formula {
+            background: #e6f7ff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin: 0 2px;
+            display: inline-block;
+          }
+          sub {
+            font-size: 0.8em;
+            vertical-align: sub;
+          }
+          sup {
+            font-size: 0.8em;
+            vertical-align: super;
+          }
+          strong, b {
+            font-weight: 700;
+          }
+          em, i {
+            font-style: italic;
+          }
+          img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 8px 0;
+          }
+        </style>
+      </head>
+      <body>
+        ${html}
+      </body>
+    </html>
+  `;
+
+  const handleMessage = (event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.height) {
+        setHeight(Math.max(80, data.height + 20));
+      }
+    } catch (e) {
+      console.log('Error parsing message:', e);
+    }
+  };
+
+  return (
+    <WebView
+      source={{ html: mathJaxHtml }}
+      style={{ height, backgroundColor: 'transparent' }}
+      scrollEnabled={false}
+      showsVerticalScrollIndicator={false}
+      showsHorizontalScrollIndicator={false}
+      originWhitelist={['*']}
+      javaScriptEnabled={true}
+      domStorageEnabled={true}
+      startInLoadingState={false}
+      androidLayerType="hardware"
+      mixedContentMode="compatibility"
+      onMessage={handleMessage}
+      onShouldStartLoadWithRequest={() => true}
+    />
+  );
+};
+
+// Summary badge renderer with MathJax (smaller)
+const SummaryBadgeRenderer = ({ html, isCorrect }: { html: string; isCorrect: boolean }) => {
+  const [height, setHeight] = useState(40);
+  
+  const mathJaxHtml = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+        <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+        <script>
+          window.MathJax = {
+            tex: {
+              inlineMath: [['\\\\(', '\\\\)']],
+              displayMath: [['\\\\[', '\\\\]']],
+              processEscapes: true
+            },
+            svg: {
+              fontCache: 'global'
+            },
+            startup: {
+              ready: () => {
+                MathJax.startup.defaultReady();
+                MathJax.startup.promise.then(() => {
+                  window.ReactNativeWebView.postMessage(JSON.stringify({
+                    height: document.body.scrollHeight
+                  }));
+                });
+              }
+            }
+          };
+        </script>
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-size: 13px;
+            color: ${isCorrect ? '#10B981' : '#EF4444'};
+            font-weight: 600;
+            line-height: 1.5;
+            padding: 2px;
+            overflow-x: hidden;
+            word-wrap: break-word;
+          }
+          p {
+            margin: 0;
+            padding: 0;
+          }
+          .math-formula {
+            background: ${isCorrect ? '#D1FAE5' : '#FEE2E2'};
+            padding: 2px 4px;
+            border-radius: 3px;
+            margin: 0 2px;
+            display: inline-block;
+          }
+          sub {
+            font-size: 0.75em;
+            vertical-align: sub;
+          }
+          sup {
+            font-size: 0.75em;
+            vertical-align: super;
+          }
+          strong, b {
+            font-weight: 700;
+          }
+          em, i {
+            font-style: italic;
+          }
+        </style>
+      </head>
+      <body>
+        ${html}
+      </body>
+    </html>
+  `;
+
+  const handleMessage = (event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.height) {
+        setHeight(Math.max(40, data.height + 15));
+      }
+    } catch (e) {
+      console.log('Error parsing message:', e);
+    }
+  };
+
+  return (
+    <WebView
+      source={{ html: mathJaxHtml }}
+      style={{ height, backgroundColor: 'transparent' }}
+      scrollEnabled={false}
+      showsVerticalScrollIndicator={false}
+      showsHorizontalScrollIndicator={false}
+      originWhitelist={['*']}
+      javaScriptEnabled={true}
+      domStorageEnabled={true}
+      startInLoadingState={false}
+      androidLayerType="hardware"
+      mixedContentMode="compatibility"
+      onMessage={handleMessage}
+      onShouldStartLoadWithRequest={() => true}
+    />
+  );
+};
+
 const ResultDetailScreen = () => {
   const route = useRoute<any>()
   const navigation = useNavigation<any>();
@@ -40,87 +506,72 @@ const ResultDetailScreen = () => {
     fetchResultDetails();
   }, [resultId]);
 
- const fetchResultDetails = async () => {
-  setIsLoading(true);
-  try {
-    // Get user data from AsyncStorage
-    const userDataString = await AsyncStorage.getItem('user');
-    
-    if (!userDataString) {
-      Alert.alert('Error', 'Please login again');
-      navigation.goBack();
-      return;
-    }
-
-    // Parse user data to get userId
-    const userData = JSON.parse(userDataString);
-    const userId = userData.user?.id;
-    const token = userData.token;
-
-    console.log("User ID:", userId);
-    console.log("Token:", token);
-
-    if (!userId) {
-      Alert.alert('Error', 'User ID not found. Please login again.');
-      navigation.goBack();
-      return;
-    }
-
-    // Fetch result details from API
-    const response = await fetch(`${BASE_URL}/api/result/${resultId}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` }), // Only add if token exists
-        // If backend needs userId in header, add it:
-        // 'x-user-id': userId,
-      },
-    });
-
-    console.log("Response Status:", response.status);
-    
-    const data = await response.json();
-    console.log("Response Data:", data);
-    
-    if (data.success) {
-      setResultData(data.result);
+  const fetchResultDetails = async () => {
+    setIsLoading(true);
+    try {
+      const userDataString = await AsyncStorage.getItem('user');
       
-      // Map the questions with user answers
-      const mappedQuestions = data.result.testId.questions.map((q: any, index: number) => {
-        const userAnswer = data.result.answers[index]?.selectedOptionId || null;
-        
-        // Handle nested options if necessary
-        const rawOptions = Array.isArray(q?.options?.[0]) ? q.options[0] : q.options || [];
-        
-        return {
-          id: q._id,
-          text: q.text,
-          subject: data.result.subjectId.name,
-          topic: q.topic,
-          options: rawOptions.map((o: any) => ({
-            id: o.id || o._id,
-            text: o.text,
-            isCorrect: o.isCorrect,
-          })),
-          userAnswer,
-          explanation: q.explanation || 'No explanation provided.',
-        };
+      if (!userDataString) {
+        Alert.alert('Error', 'Please login again');
+        navigation.goBack();
+        return;
+      }
+
+      const userData = JSON.parse(userDataString);
+      const userId = userData.user?.id;
+      const token = userData.token;
+
+      if (!userId) {
+        Alert.alert('Error', 'User ID not found. Please login again.');
+        navigation.goBack();
+        return;
+      }
+
+      const response = await fetch(`${BASE_URL}/api/result/${resultId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
       });
       
-      console.log("Mapped Questions:", mappedQuestions.length);
-      setQuestions(mappedQuestions);
-    } else {
-      Alert.alert('Error', data.message || 'Failed to fetch result details');
+      const data = await response.json();
+      
+      if (data.success) {
+        setResultData(data.result);
+        
+        const mappedQuestions = data.result.testId.questions.map((q: any, index: number) => {
+          const userAnswer = data.result.answers[index]?.selectedOptionId || null;
+          const rawOptions = Array.isArray(q?.options?.[0]) ? q.options[0] : q.options || [];
+          
+          return {
+            id: q._id,
+            text: q.text,
+            subject: data.result.subjectId.name,
+            topic: q.topic,
+            options: rawOptions.map((o: any) => ({
+              id: o.id || o._id,
+              text: o.text,
+              isCorrect: o.isCorrect,
+            })),
+            userAnswer,
+            explanation: q.explanation || 'No explanation provided.',
+          };
+        });
+        
+        setQuestions(mappedQuestions);
+      } else {
+        Alert.alert('Error', data.message || 'Failed to fetch result details');
+        navigation.goBack();
+      }
+    } catch (error) {
+      console.error('Fetch result details error:', error);
+      Alert.alert('Error', 'Failed to load result details. Please try again.');
       navigation.goBack();
+    } finally {
+      setIsLoading(false);
     }
-  } catch (error) {
-    console.error('Fetch result details error:', error);
-    Alert.alert('Error', 'Failed to load result details. Please try again.');
-    navigation.goBack();
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   if (isLoading) {
     return (
@@ -169,36 +620,6 @@ const ResultDetailScreen = () => {
       .replace(/&nbsp;/g, ' ')
       .replace(/\s+/g, ' ')
       .trim() || '<p></p>';
-  };
-
-  const htmlOptionStyle = {
-    body: {
-      fontSize: 14,
-      color: '#374151',
-      fontWeight: '500',
-      margin: 0,
-      padding: 0,
-    },
-    p: {
-      margin: 0,
-      padding: 0,
-    },
-  };
-
-  const htmlExplanationStyle = {
-    body: {
-      fontSize: 14,
-      color: '#6B7280',
-      lineHeight: 22,
-      fontWeight: '500',
-      margin: 0,
-      padding: 0,
-    },
-    p: {
-      margin: 0,
-      padding: 0,
-      marginBottom: 8,
-    },
   };
 
   return (
@@ -307,21 +728,7 @@ const ResultDetailScreen = () => {
             <View style={styles.questionTextContainer}>
               <Text style={styles.questionNumber}>Q{currentQuestionIndex + 1}. </Text>
               <View style={{ flex: 1 }}>
-                <RenderHtml
-                  contentWidth={width - 80}
-                  source={{ html: cleanHtmlContent(currentQuestion.text) }}
-                  tagsStyles={{
-                    body: {
-                      fontSize: 17,
-                      fontWeight: '700',
-                      color: '#111827',
-                      lineHeight: 26,
-                      margin: 0,
-                      padding: 0,
-                    },
-                    p: { margin: 0, padding: 0 },
-                  }}
-                />
+                <QuestionRenderer html={cleanHtmlContent(currentQuestion.text)} />
               </View>
             </View>
             <Text style={styles.questionSubtext}>Choose wisely, genius!</Text>
@@ -357,11 +764,7 @@ const ResultDetailScreen = () => {
                         {option.id.toUpperCase()}.
                       </Text>
                       <View style={{ flex: 1 }}>
-                        <RenderHtml
-                          contentWidth={width - 140}
-                          source={{ html: cleanHtmlContent(option.text) }}
-                          tagsStyles={htmlOptionStyle}
-                        />
+                        <OptionRenderer html={cleanHtmlContent(option.text)} />
                       </View>
                     </View>
                   </View>
@@ -388,11 +791,7 @@ const ResultDetailScreen = () => {
               </LinearGradient>
               <Text style={styles.explanationTitle}>Explanation</Text>
             </View>
-            <RenderHtml
-              contentWidth={width - 88}
-              source={{ html: cleanHtmlContent(currentQuestion.explanation) }}
-              tagsStyles={htmlExplanationStyle}
-            />
+            <ExplanationRenderer html={cleanHtmlContent(currentQuestion.explanation)} />
           </LinearGradient>
         </View>
 
@@ -414,15 +813,9 @@ const ResultDetailScreen = () => {
                       {userSelectedOption.id.toUpperCase()}.
                     </Text>
                     <View style={{ flex: 1 }}>
-                      <RenderHtml
-                        contentWidth={width / 2 - 70}
-                        source={{ html: cleanHtmlContent(userSelectedOption.text) }}
-                        tagsStyles={{
-                          body: [
-                            styles.summaryBadgeText,
-                            isCorrect ? styles.summaryBadgeTextCorrect : styles.summaryBadgeTextIncorrect
-                          ]
-                        }}
+                      <SummaryBadgeRenderer 
+                        html={cleanHtmlContent(userSelectedOption.text)} 
+                        isCorrect={isCorrect}
                       />
                     </View>
                   </View>
@@ -442,12 +835,9 @@ const ResultDetailScreen = () => {
                     {correctOption?.id.toUpperCase()}.
                   </Text>
                   <View style={{ flex: 1 }}>
-                    <RenderHtml
-                      contentWidth={width / 2 - 70}
-                      source={{ html: cleanHtmlContent(correctOption?.text || '') }}
-                      tagsStyles={{
-                        body: [styles.summaryBadgeText, styles.summaryBadgeTextCorrect]
-                      }}
+                    <SummaryBadgeRenderer 
+                      html={cleanHtmlContent(correctOption?.text || '')} 
+                      isCorrect={true}
                     />
                   </View>
                 </View>

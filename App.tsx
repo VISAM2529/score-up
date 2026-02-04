@@ -7,7 +7,7 @@ import OnboardingScreen from './screens/OnboardingScreen';
 import LoginScreen from './screens/LoginScreen';
 import MainTabNavigator from './navigation/MainTabNavigator';
 import { StatusBar } from 'expo-status-bar';
-
+import ResultsListScreen from 'screens/ResultsScreen';
 import './global.css';
 
 const Stack = createNativeStackNavigator();
@@ -34,6 +34,7 @@ export default function App() {
         <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Main" component={MainTabNavigator} />
+        <Stack.Screen name="Results" component={ResultsListScreen} />
       </Stack.Navigator>
       <StatusBar style="auto" />
     </NavigationContainer>

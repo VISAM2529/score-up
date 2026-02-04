@@ -1,7 +1,7 @@
 // screens/SyllabusScreen.tsx
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -28,35 +28,12 @@ interface SyllabiResponse {
   syllabi: Syllabus[];
 }
 
-interface Subscription {
-  _id: string;
-  syllabusIds: Syllabus[];
-  price: number;
-  discountPercent: number;
-  finalPrice: number;
-  durationDays: number;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-  __v: number;
-}
-
-interface ApiResponse {
-  success: boolean;
-  subscriptions: Subscription[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-  };
-}
-
 const SyllabusScreen = () => {
   const navigation = useNavigation<any>();
   const [syllabusOptions, setSyllabusOptions] = useState<any[]>([]);
-  const [allowedSyllabusIds, setAllowedSyllabusIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasSubscription, setHasSubscription] = useState(false);
+  const [subscribedSyllabusNames, setSubscribedSyllabusNames] = useState<string>('');
 
   const getSubjectsByName = (name: string) => {
     switch (name) {
@@ -64,6 +41,7 @@ const SyllabusScreen = () => {
         return ['Physics', 'Chemistry', 'Mathematics'];
       case 'NEET':
         return ['Physics', 'Chemistry', 'Biology'];
+      case 'MHT-CET':
       case 'CET':
         return ['Physics', 'Chemistry', 'Mathematics', 'Biology'];
       default:
@@ -77,6 +55,7 @@ const SyllabusScreen = () => {
         return 'calculator-outline';
       case 'NEET':
         return 'medkit-outline';
+      case 'MHT-CET':
       case 'CET':
         return 'book-outline';
       default:
@@ -90,6 +69,7 @@ const SyllabusScreen = () => {
         return '2.5M+';
       case 'NEET':
         return '1.8M+';
+      case 'MHT-CET':
       case 'CET':
         return '850K+';
       default:
@@ -103,6 +83,7 @@ const SyllabusScreen = () => {
         return 450;
       case 'NEET':
         return 380;
+      case 'MHT-CET':
       case 'CET':
         return 320;
       default:
@@ -116,6 +97,7 @@ const SyllabusScreen = () => {
         return 'Engineering Entrance';
       case 'NEET':
         return 'Medical Entrance';
+      case 'MHT-CET':
       case 'CET':
         return 'State Entrance';
       default:
@@ -130,32 +112,244 @@ const SyllabusScreen = () => {
     { icon: 'analytics', text: 'Analytics', color: '#10B981' },
   ];
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  // Use useFocusEffect to reload data when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('Screen focused, reloading data...');
+      loadData();
+      
+      return () => {
+        console.log('Screen unfocused');
+      };
+    }, [])
+  );
+
+  const refreshUserDataFromServer = async (userId: string) => {
+    try {
+      console.log('=== REFRESHING USER DATA FROM SERVER ===');
+      console.log('User ID:', userId);
+      
+      const response = await fetch(`${BASE_URL}/api/user/${userId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('Server response status:', response.status);
+      const data = await response.json();
+      console.log('Server response success:', data.success);
+
+      if (data.success && data.user) {
+        console.log('Fresh user data received from server');
+        console.log('Subscription status:', data.user.subscription?.status);
+        console.log('Subscription details present:', !!data.user.subscription?.subscriptionDetails);
+        
+        // Update AsyncStorage with fresh data
+        const userDataString = await AsyncStorage.getItem('user');
+        if (userDataString) {
+          const existingUserData = JSON.parse(userDataString);
+          
+          // Update the user object while keeping other data (token, loginTime, etc)
+          existingUserData.user = data.user;
+          
+          // Save back to AsyncStorage
+          await AsyncStorage.setItem('user', JSON.stringify(existingUserData));
+          console.log('User data refreshed and saved to AsyncStorage');
+          
+          return data.user;
+        }
+      } else {
+        console.error('Failed to refresh user data:', data.message);
+        return null;
+      }
+    } catch (error: any) {
+      console.error('=== ERROR REFRESHING USER DATA ===');
+      console.error('Error message:', error.message);
+      return null;
+    }
+  };
 
   const loadData = async () => {
-    console.log('Loading syllabus data...');
+    console.log('=== LOADING SYLLABUS DATA ===');
     setIsLoading(true);
+    
     try {
-      // Fetch syllabi
+      // Get user data from AsyncStorage
+      const userDataString = await AsyncStorage.getItem('user');
+      console.log('User data from storage:', userDataString ? 'Found' : 'Not found');
+      
+      if (!userDataString) {
+        console.log('No user data found - redirecting to login');
+        setIsLoading(false);
+        Alert.alert('Error', 'Please login to continue', [
+          { text: 'OK', onPress: () => navigation.navigate('Login') }
+        ]);
+        return;
+      }
+
+      const userData = JSON.parse(userDataString);
+      const userId = userData.user?.id || userData.user?._id;
+      
+      console.log('User email:', userData.user?.email);
+      console.log('User ID:', userId);
+
+      // REFRESH USER DATA FROM SERVER
+      console.log('Fetching fresh user data from server...');
+      const freshUserData = await refreshUserDataFromServer(userId);
+      
+      // Use fresh data if available, otherwise use cached data
+      const currentUserData = freshUserData || userData.user;
+      console.log('Using data:', freshUserData ? 'Fresh from server' : 'Cached from AsyncStorage');
+
+      // Check if user has active subscription with details
+      const userSubscription = currentUserData?.subscription;
+      console.log('User subscription status:', userSubscription?.status);
+      console.log('Subscription details present:', !!userSubscription?.subscriptionDetails);
+      console.log('Subscription expired:', userSubscription?.isExpired);
+      console.log('Expiry date:', userSubscription?.expiryDate);
+
+      // Validate subscription
+      if (!userSubscription || userSubscription.status !== 'Active') {
+        console.log('No active subscription found');
+        setHasSubscription(false);
+        setSyllabusOptions([]);
+        setIsLoading(false);
+        
+        Alert.alert(
+          'Subscription Required',
+          'Please subscribe to access syllabuses and tests.',
+          [{ 
+            text: 'Subscribe Now', 
+            onPress: () => navigation.navigate('Subscription') 
+          }]
+        );
+        return;
+      }
+
+      // Check if subscription is expired
+      const expiryDate = userSubscription.expiryDate ? new Date(userSubscription.expiryDate) : null;
+      const isExpired = userSubscription.isExpired || (expiryDate && expiryDate < new Date());
+      
+      if (isExpired) {
+        console.log('Subscription has expired');
+        setHasSubscription(false);
+        setSyllabusOptions([]);
+        setIsLoading(false);
+        
+        Alert.alert(
+          'Subscription Expired',
+          'Your subscription has expired. Please renew to continue.',
+          [{ 
+            text: 'Renew Now', 
+            onPress: () => navigation.navigate('Subscription') 
+          }]
+        );
+        return;
+      }
+
+      // Check if subscription details exist
+      if (!userSubscription.subscriptionDetails) {
+        console.log('Subscription details missing after server refresh');
+        setHasSubscription(false);
+        setSyllabusOptions([]);
+        setIsLoading(false);
+        
+        Alert.alert(
+          'Subscription Error',
+          'Subscription details not found. This might be a temporary issue. Please try again or contact support.',
+          [
+            { 
+              text: 'Retry', 
+              onPress: () => loadData()
+            },
+            { 
+              text: 'Go to Subscription', 
+              onPress: () => navigation.navigate('Subscription') 
+            }
+          ]
+        );
+        return;
+      }
+
+      // Get allowed syllabus IDs from subscription details
+      const subscriptionDetails = userSubscription.subscriptionDetails;
+      console.log('Subscription details:', JSON.stringify(subscriptionDetails, null, 2));
+      
+      if (!subscriptionDetails.syllabusIds || subscriptionDetails.syllabusIds.length === 0) {
+        console.log('No syllabus IDs in subscription');
+        setHasSubscription(false);
+        setSyllabusOptions([]);
+        setIsLoading(false);
+        
+        Alert.alert(
+          'Subscription Error',
+          'No syllabuses found in your subscription. Please contact support.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      const allowedSyllabusIds = subscriptionDetails.syllabusIds.map((s: any) => s._id);
+      console.log('Allowed syllabus IDs:', allowedSyllabusIds);
+      
+      const syllabusNames = subscriptionDetails.syllabusNames || 
+                           subscriptionDetails.syllabusIds.map((s: any) => s.name).join(', ');
+      console.log('Subscribed syllabus names:', syllabusNames);
+      
+      setSubscribedSyllabusNames(syllabusNames);
+      setHasSubscription(true);
+
+      // Fetch all syllabi from API
+      console.log('Fetching syllabi from API...');
       const syllabiRes = await fetch(`${BASE_URL}/api/syllabus`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
-      console.log('Syllabi Response status:', syllabiRes.status);
-      const syllabiData: SyllabiResponse = await syllabiRes.json();
-      console.log('Syllabi Response body:', JSON.stringify(syllabiData, null, 2));
+      
+      console.log('Syllabi API response status:', syllabiRes.status);
+      
+      if (!syllabiRes.ok) {
+        throw new Error(`API returned ${syllabiRes.status}`);
+      }
 
-      if (syllabiData.success) {
-        // Get user subscription ID
-        const userSubId = await AsyncStorage.getItem('userSubscriptionId');
-        if (!userSubId) {
-          console.log('No subscription found, showing all syllabi but prompting to subscribe');
-          // For now, show all active syllabi, but you can add a global subscribe prompt
-          const activeSyllabi = syllabiData.syllabi.filter(s => s.isActive);
-          const options = activeSyllabi.map(s => ({
+      const syllabiData: SyllabiResponse = await syllabiRes.json();
+      console.log('Syllabi count:', syllabiData.syllabi?.length || 0);
+      console.log('API success:', syllabiData.success);
+
+      if (syllabiData.success && syllabiData.syllabi) {
+        // Log all syllabi
+        console.log('All syllabi from API:');
+        syllabiData.syllabi.forEach(s => {
+          console.log(`  - ${s.name} (${s._id}) - Active: ${s.isActive}`);
+        });
+
+        // Filter syllabi to only include those in user's subscription
+        const filteredSyllabi = syllabiData.syllabi.filter(s => {
+          const isActive = s.isActive;
+          const isAllowed = allowedSyllabusIds.includes(s._id);
+          console.log(`Filtering ${s.name}: Active=${isActive}, Allowed=${isAllowed}`);
+          return isActive && isAllowed;
+        });
+        
+        console.log('Filtered syllabi count:', filteredSyllabi.length);
+
+        if (filteredSyllabi.length === 0) {
+          console.log('No matching syllabi found');
+          console.log('Allowed IDs:', allowedSyllabusIds);
+          console.log('Available syllabus IDs:', syllabiData.syllabi.map(s => s._id));
+          
+          setSyllabusOptions([]);
+          Alert.alert(
+            'No Content Available',
+            'No syllabi found for your subscription. The subscribed syllabuses may not be active yet. Please contact support.',
+            [{ text: 'OK' }]
+          );
+        } else {
+          // Map syllabi to display format
+          const options = filteredSyllabi.map(s => ({
             id: s.name,
+            syllabusId: s._id,
             title: s.fullName,
             subtitle: getSubtitleByName(s.name),
             icon: getIconByName(s.name),
@@ -165,68 +359,35 @@ const SyllabusScreen = () => {
             students: getStudentsByName(s.name),
             description: s.description,
           }));
+          
+          console.log('Syllabus options created:', options.length);
           setSyllabusOptions(options);
-          setHasSubscription(false);
-          return;
-        }
-
-        // Fetch subscriptions to get user's sub details
-        const subsRes = await fetch(`${BASE_URL}/api/admin/subscriptions`, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-        });
-        console.log('Subscriptions Response status:', subsRes.status);
-        const subsData: ApiResponse = await subsRes.json();
-        console.log('Subscriptions Response body:', JSON.stringify(subsData, null, 2));
-
-        if (subsData.success) {
-          const userSub = subsData.subscriptions.find((sub: Subscription) => sub._id === userSubId);
-          if (userSub && userSub.isActive) {
-            const allowedIds = userSub.syllabusIds.map((s: Syllabus) => s._id);
-            setAllowedSyllabusIds(allowedIds);
-            console.log('Allowed syllabus IDs:', allowedIds);
-
-            // Filter syllabi based on subscription
-            const filteredSyllabi = syllabiData.syllabi.filter(s => s.isActive && allowedIds.includes(s._id));
-            const options = filteredSyllabi.map(s => ({
-              id: s.name,
-              title: s.fullName,
-              subtitle: getSubtitleByName(s.name),
-              icon: getIconByName(s.name),
-              color: s.color,
-              subjects: getSubjectsByName(s.name),
-              totalTests: getTotalTestsByName(s.name),
-              students: getStudentsByName(s.name),
-              description: s.description,
-            }));
-            setSyllabusOptions(options);
-            setHasSubscription(true);
-          } else {
-            console.log('Invalid or inactive subscription');
-            Alert.alert('Subscription Expired', 'Your subscription is inactive. Please renew.', [
-              { text: 'OK', onPress: () => navigation.navigate('Subscription') }
-            ]);
-            // Fallback to empty or all
-            setSyllabusOptions([]);
-          }
-        } else {
-          Alert.alert('Error', 'Failed to load subscriptions.');
-          setSyllabusOptions([]);
         }
       } else {
-        Alert.alert('Error', 'Failed to load syllabi.');
+        console.log('API returned failure or no syllabi');
+        Alert.alert('Error', 'Failed to load syllabi from server.');
         setSyllabusOptions([]);
       }
-    } catch (error) {
-      console.error('Load Data Error:', error);
-      Alert.alert('Error', 'Network error. Please check your connection.');
+    } catch (error: any) {
+      console.error('=== LOAD DATA ERROR ===');
+      console.error('Error type:', error.name);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      
+      Alert.alert(
+        'Error', 
+        'Network error. Please check your connection and try again.',
+        [{ text: 'Retry', onPress: () => loadData() }]
+      );
       setSyllabusOptions([]);
     } finally {
       setIsLoading(false);
+      console.log('=== LOAD DATA COMPLETE ===');
     }
   };
 
   const handleSyllabusSelect = (syllabus: string) => {
+    console.log('Selected syllabus:', syllabus);
     navigation.navigate('TestList', { syllabus });
   };
 
@@ -246,11 +407,10 @@ const SyllabusScreen = () => {
             </View>
           </View>
         </LinearGradient>
-        <View style={styles.emptyState}>
-          <View style={styles.emptyIconCircle}>
-            <Ionicons name="hourglass-outline" size={48} color="#9CA3AF" />
-          </View>
-          <Text style={styles.emptyStateTitle}>Loading syllabi...</Text>
+        <View style={styles.loadingState}>
+          <ActivityIndicator size="large" color="#5B8DEE" />
+          <Text style={styles.loadingStateText}>Loading syllabi...</Text>
+          <Text style={styles.loadingStateSubtext}>Fetching your subscription details</Text>
         </View>
       </View>
     );
@@ -267,16 +427,18 @@ const SyllabusScreen = () => {
             </View>
             <View style={styles.headerTextContainer}>
               <Text style={styles.headerTitle}>Choose Your Path</Text>
-              <Text style={styles.headerSubtitle}>Select exam to practice</Text>
+              <Text style={styles.headerSubtitle}>
+                {hasSubscription && subscribedSyllabusNames 
+                  ? subscribedSyllabusNames 
+                  : 'Select exam to practice'}
+              </Text>
             </View>
           </View>
-          {!hasSubscription && (
-            <TouchableOpacity 
-              style={styles.subscribeHeaderButton}
-              onPress={() => navigation.navigate('Subscription')}
-            >
-              <Text style={styles.subscribeHeaderButtonText}>Subscribe</Text>
-            </TouchableOpacity>
+          {hasSubscription && (
+            <View style={styles.premiumBadge}>
+              <Ionicons name="shield-checkmark" size={14} color="#10B981" />
+              <Text style={styles.premiumBadgeText}>Premium</Text>
+            </View>
           )}
         </View>
       </LinearGradient>
@@ -287,16 +449,17 @@ const SyllabusScreen = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {!hasSubscription && syllabusOptions.length > 0 && (
-          <View style={styles.subscriptionPrompt}>
-            <Ionicons name="star-outline" size={20} color="#F59E0B" />
-            <Text style={styles.subscriptionPromptText}>Subscribe to unlock all syllabi and premium tests!</Text>
-            <TouchableOpacity 
-              style={styles.subscribePromptButton}
-              onPress={() => navigation.navigate('Subscription')}
-            >
-              <Text style={styles.subscribePromptButtonText}>Get Premium</Text>
-            </TouchableOpacity>
+        {hasSubscription && (
+          <View style={styles.activeSubscriptionBanner}>
+            <View style={styles.bannerIconCircle}>
+              <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+            </View>
+            <View style={styles.bannerTextContainer}>
+              <Text style={styles.bannerTitle}>Active Subscription</Text>
+              <Text style={styles.bannerSubtitle}>
+                You have access to {subscribedSyllabusNames}
+              </Text>
+            </View>
           </View>
         )}
 
@@ -333,13 +496,25 @@ const SyllabusScreen = () => {
                   </TouchableOpacity>
                 </>
               ) : (
-                <Text style={styles.emptyStateSubtitle}>Check back soon for new syllabi</Text>
+                <>
+                  <Text style={styles.emptyStateSubtitle}>
+                    Your subscribed syllabuses are not currently available.{'\n'}
+                    Please contact support.
+                  </Text>
+                  <TouchableOpacity 
+                    style={[styles.subscribeButton, { backgroundColor: '#F59E0B' }]}
+                    onPress={() => loadData()}
+                  >
+                    <Ionicons name="refresh" size={18} color="#FFFFFF" />
+                    <Text style={styles.subscribeButtonText}>Retry</Text>
+                  </TouchableOpacity>
+                </>
               )}
             </View>
           ) : (
             syllabusOptions.map((option) => (
               <TouchableOpacity
-                key={option.id}
+                key={option.syllabusId}
                 style={styles.syllabusCard}
                 onPress={() => handleSyllabusSelect(option.id)}
                 activeOpacity={0.7}
@@ -350,6 +525,12 @@ const SyllabusScreen = () => {
                   end={{ x: 1, y: 1 }}
                   style={styles.cardGradient}
                 >
+                  {/* Premium Badge on Card */}
+                  <View style={styles.cardPremiumBadge}>
+                    <Ionicons name="shield-checkmark" size={12} color="#10B981" />
+                    <Text style={styles.cardPremiumText}>Unlocked</Text>
+                  </View>
+
                   {/* Card Header */}
                   <View style={styles.cardHeader}>
                     <View style={styles.cardHeaderLeft}>
@@ -438,7 +619,7 @@ const SyllabusScreen = () => {
               >
                 <Ionicons name="information-circle" size={24} color="#FFFFFF" />
               </LinearGradient>
-              <Text style={styles.infoTitle}>Why Choose MCQ Prep?</Text>
+              <Text style={styles.infoTitle}>Why Choose ScoreUp?</Text>
             </View>
             
             <View style={styles.benefitsList}>
@@ -464,7 +645,7 @@ const SyllabusScreen = () => {
                 <View style={styles.benefitIconCircle}>
                   <Ionicons name="checkmark" size={16} color="#10B981" />
                 </View>
-                <Text style={styles.benefitText}>One-time payment of ₹99 only</Text>
+                <Text style={styles.benefitText}>Affordable premium access</Text>
               </View>
             </View>
           </LinearGradient>
@@ -520,16 +701,19 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.8)',
     fontWeight: '500',
   },
-  subscribeHeaderButton: {
+  premiumBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 4,
   },
-  subscribeHeaderButtonText: {
+  premiumBadgeText: {
     color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
   },
   scrollView: {
     flex: 1,
@@ -537,32 +721,56 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 100,
   },
-  subscriptionPrompt: {
+  loadingState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 80,
+  },
+  loadingStateText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontWeight: '600',
+    marginTop: 16,
+  },
+  loadingStateSubtext: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginTop: 4,
+  },
+  activeSubscriptionBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF3C7',
-    padding: 12,
+    backgroundColor: '#D1FAE5',
+    padding: 16,
     marginHorizontal: 24,
     marginVertical: 16,
     borderRadius: 12,
-    gap: 8,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    gap: 12,
   },
-  subscriptionPromptText: {
-    fontSize: 14,
-    color: '#92400E',
+  bannerIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bannerTextContainer: {
     flex: 1,
-    fontWeight: '500',
   },
-  subscribePromptButton: {
-    backgroundColor: '#F59E0B',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+  bannerTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#166534',
+    marginBottom: 2,
   },
-  subscribePromptButtonText: {
-    color: '#FFFFFF',
+  bannerSubtitle: {
     fontSize: 12,
-    fontWeight: '600',
+    color: '#15803D',
+    fontWeight: '500',
   },
   featuresSection: {
     backgroundColor: '#FFFFFF',
@@ -607,6 +815,24 @@ const styles = StyleSheet.create({
   },
   cardGradient: {
     padding: 20,
+  },
+  cardPremiumBadge: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+    zIndex: 10,
+  },
+  cardPremiumText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#10B981',
   },
   cardHeader: {
     marginBottom: 14,
@@ -788,12 +1014,17 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     textAlign: 'center',
     marginBottom: 20,
+    paddingHorizontal: 24,
+    lineHeight: 20,
   },
   subscribeButton: {
+    flexDirection: 'row',
     backgroundColor: '#5B8DEE',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 10,
+    alignItems: 'center',
+    gap: 8,
   },
   subscribeButtonText: {
     color: '#FFFFFF',

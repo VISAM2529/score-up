@@ -18,7 +18,7 @@ const OnboardingScreen = () => {
       id: 1,
       icon: 'school-outline',
       title: 'Master Your Exams',
-      subtitle: 'Access 1000+ curated questions for JEE, NEET & CET. Practice with chapter-wise tests and full-length mock exams.',
+      subtitle: 'Access 20000+ curated questions for JEE, NEET & CET. Practice with chapter-wise tests and full-length mock exams.',
       gradient: ['#FFFFFF', '#F8F9FF'],
       accentColor: '#4F46E5',
       iconBg: '#EEF2FF',

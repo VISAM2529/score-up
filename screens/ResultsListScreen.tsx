@@ -1,6 +1,5 @@
-// screens/ResultsListScreen.tsx
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, FlatList, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, ScrollView, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -10,9 +9,10 @@ const BASE_URL = 'https://scoreup-admin.vercel.app';
 
 interface Result {
   _id: string;
-  syllabusId: { name: string };
-  testId: { name: string };
-  subjectId: { name: string };
+  userId: string;
+  syllabusId: { _id: string; name: string };
+  testId: { _id: string; name: string };
+  subjectId: { _id: string; name: string };
   score: number;
   totalQuestions: number;
   percentage: number;
@@ -22,6 +22,12 @@ interface Result {
   difficulty: 'Easy' | 'Medium' | 'Hard';
   type: 'Mock' | 'Practice' | 'Chapter' | 'Previous Year';
   rank?: number;
+  answers: any[];
+}
+
+interface ApiResponse {
+  success: boolean;
+  results: Result[];
 }
 
 const ResultsListScreen = () => {
@@ -29,8 +35,10 @@ const ResultsListScreen = () => {
   const [selectedFilter, setSelectedFilter] = useState<string>('All');
   const [allResults, setAllResults] = useState<Result[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [userId, setUserId] = useState<string>('');
 
-  const filters = ['All', 'JEE', 'NEET', 'CET'];
+  // Get unique syllabuses from results for filter tabs
+  const [availableSyllabuses, setAvailableSyllabuses] = useState<string[]>([]);
 
   useEffect(() => {
     fetchResults();
@@ -39,27 +47,60 @@ const ResultsListScreen = () => {
   const fetchResults = async () => {
     setIsLoading(true);
     try {
-      const token = await AsyncStorage.getItem('userToken');
-      if (!token) {
-        throw new Error('No authentication token found');
+      // Get user data from AsyncStorage
+      const userDataString = await AsyncStorage.getItem('user');
+      if (!userDataString) {
+        Alert.alert('Error', 'Please login to view results');
+        navigation.replace('Login');
+        setIsLoading(false);
+        return;
       }
 
-      const response = await fetch(`${BASE_URL}/api/result`, {
+      const userData = JSON.parse(userDataString);
+      const userIdFromStorage = userData.user?.id || userData.user?._id;
+      
+      if (!userIdFromStorage) {
+        Alert.alert('Error', 'User ID not found');
+        setIsLoading(false);
+        return;
+      }
+
+      setUserId(userIdFromStorage);
+      console.log('Fetching results for userId:', userIdFromStorage);
+
+      const response = await fetch(`${BASE_URL}/api/result?userId=${userIdFromStorage}`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
       });
 
-      const data = await response.json();
-      if (data.success) {
-        setAllResults(data.results);
+      console.log('Response status:', response.status);
+      const data: ApiResponse = await response.json();
+      console.log('Results fetched:', data.results?.length || 0);
+
+      if (data.success && data.results) {
+        // Sort by most recent first
+        const sortedResults = data.results.sort((a, b) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        
+        setAllResults(sortedResults);
+        
+        // Extract unique syllabuses for filters
+        const uniqueSyllabuses = Array.from(
+          new Set(sortedResults.map(r => r.syllabusId?.name).filter(Boolean))
+        );
+        setAvailableSyllabuses(['All', ...uniqueSyllabuses]);
+        
+        console.log('Available syllabuses:', uniqueSyllabuses);
       } else {
-        throw new Error(data.message || 'Failed to fetch results');
+        console.log('No results found or API error');
+        setAllResults([]);
       }
     } catch (error) {
       console.error('Fetch results error:', error);
-      Alert.alert('Error', 'Failed to load results. Please try again.');
+      Alert.alert('Error', 'Network error. Please check your connection.');
     } finally {
       setIsLoading(false);
     }
@@ -101,12 +142,21 @@ const ResultsListScreen = () => {
   };
 
   const getIcon = (subject: string) => {
-    switch(subject.toLowerCase()) {
-      case 'physics': return 'flask-outline';
-      case 'chemistry': return 'beaker-outline';
-      case 'mathematics': return 'calculator-outline';
-      case 'biology': return 'leaf-outline';
-      default: return 'book-outline';
+    const subjectLower = subject.toLowerCase();
+    if (subjectLower.includes('physics')) return 'flask-outline';
+    if (subjectLower.includes('chemistry')) return 'beaker-outline';
+    if (subjectLower.includes('math')) return 'calculator-outline';
+    if (subjectLower.includes('biology')) return 'leaf-outline';
+    return 'book-outline';
+  };
+
+  const getTypeIcon = (type: string) => {
+    switch(type) {
+      case 'Mock': return 'trophy-outline';
+      case 'Practice': return 'play-outline';
+      case 'Chapter': return 'book-outline';
+      case 'Previous Year': return 'archive-outline';
+      default: return 'document-outline';
     }
   };
 
@@ -125,14 +175,16 @@ const ResultsListScreen = () => {
     { label: 'Total Points', value: totalPoints.toString(), icon: 'star-outline', color: '#EC4899' },
   ];
 
-  const results = selectedFilter === 'All' 
+  // Filter results
+  const filteredResults = selectedFilter === 'All' 
     ? allResults 
-    : allResults.filter(result => result.syllabusId.name === selectedFilter);
+    : allResults.filter(result => result.syllabusId?.name === selectedFilter);
 
   if (isLoading) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.emptyStateTitle}>Loading results...</Text>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4F46E5" />
+        <Text style={styles.loadingText}>Loading results...</Text>
       </View>
     );
   }
@@ -140,7 +192,12 @@ const ResultsListScreen = () => {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <LinearGradient
+        colors={['#4F46E5', '#6366F1']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
         <View style={styles.headerTop}>
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle}>My Results</Text>
@@ -157,7 +214,7 @@ const ResultsListScreen = () => {
             <View key={index} style={styles.statCard}>
               <View style={styles.statHeader}>
                 <View style={[styles.statIconCircle, { backgroundColor: `${stat.color}15` }]}>
-                  <Ionicons name={stat.icon} size={18} color={stat.color} />
+                  <Ionicons name={stat.icon as any} size={18} color={stat.color} />
                 </View>
                 <Text style={styles.statValue}>{stat.value}</Text>
               </View>
@@ -165,177 +222,226 @@ const ResultsListScreen = () => {
             </View>
           ))}
         </View>
-      </View>
+      </LinearGradient>
 
       {/* Filter Tabs */}
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        style={styles.filterScrollView}
-        contentContainerStyle={styles.filterContainer}
-      >
-        {filters.map((filter) => (
-          <TouchableOpacity
-            key={filter}
-            onPress={() => setSelectedFilter(filter)}
-            style={[
-              styles.filterButton,
-              selectedFilter === filter 
-                ? styles.filterButtonActive
-                : styles.filterButtonInactive
-            ]}
-          >
-            <Text 
+      {availableSyllabuses.length > 1 && (
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          style={styles.filterScrollView}
+          contentContainerStyle={styles.filterContainer}
+        >
+          {availableSyllabuses.map((filter) => (
+            <TouchableOpacity
+              key={filter}
+              onPress={() => setSelectedFilter(filter)}
               style={[
-                styles.filterButtonText,
+                styles.filterButton,
                 selectedFilter === filter 
-                  ? styles.filterButtonTextActive 
-                  : styles.filterButtonTextInactive
+                  ? styles.filterButtonActive
+                  : styles.filterButtonInactive
               ]}
             >
-              {filter}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+              <Text 
+                style={[
+                  styles.filterButtonText,
+                  selectedFilter === filter 
+                    ? styles.filterButtonTextActive 
+                    : styles.filterButtonTextInactive
+                ]}
+              >
+                {filter}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
 
       {/* Results List */}
       <FlatList
-        data={results}
+        data={filteredResults}
         keyExtractor={(item) => item._id}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        refreshing={isLoading}
+        onRefresh={fetchResults}
         renderItem={({ item }) => {
           const badge = getPerformanceBadge(item.percentage);
           return (
             <TouchableOpacity
               style={styles.resultCard}
-              onPress={() => navigation.navigate('ResultDetail', {
-                resultId: item._id,
-                score: item.score,
-                total: item.totalQuestions,
-                percentage: item.percentage,
-                points: item.points,
-                syllabus: item.syllabusId.name,
-                testId: item.testId._id,
-                testName: item.testId.name,
-                timeSpent: item.timeSpent
-              })}
+              onPress={() => {
+                console.log('Navigating to ResultDetail with:', {
+                  resultId: item._id,
+                  testId: item.testId?._id
+                });
+                navigation.navigate('ResultDetail', {
+                  resultId: item._id,
+                  testId: item.testId?._id
+                });
+              }}
               activeOpacity={0.7}
             >
-              {/* Header */}
-              <View style={styles.cardHeader}>
-                <View style={styles.cardHeaderLeft}>
-                  <View style={styles.cardIconCircle}>
-                    <Ionicons name={getIcon(item.subjectId.name)} size={24} color="#4F46E5" />
-                  </View>
-                  <View style={styles.cardTextContainer}>
-                    <Text style={styles.cardTitle} numberOfLines={1}>
-                      {item.testId.name}
-                    </Text>
-                    <View style={styles.cardSubInfo}>
-                      <Text style={styles.cardSubject}>{item.subjectId.name}</Text>
-                      <View style={styles.dot} />
-                      <Text style={styles.cardSyllabus}>{item.syllabusId.name}</Text>
+              <LinearGradient
+                colors={['#FFFFFF', '#FAFBFF']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.cardGradient}
+              >
+                {/* Header */}
+                <View style={styles.cardHeader}>
+                  <View style={styles.cardHeaderLeft}>
+                    <LinearGradient
+                      colors={['#4F46E5', '#6366F1']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.cardIconCircle}
+                    >
+                      <Ionicons 
+                        name={getIcon(item.subjectId?.name || '') as any} 
+                        size={24} 
+                        color="#FFFFFF" 
+                      />
+                    </LinearGradient>
+                    <View style={styles.cardTextContainer}>
+                      <Text style={styles.cardTitle} numberOfLines={1}>
+                        {item.testId?.name || 'Test'}
+                      </Text>
+                      <View style={styles.cardSubInfo}>
+                        <Text style={styles.cardSubject}>
+                          {item.subjectId?.name || 'Subject'}
+                        </Text>
+                        <View style={styles.dot} />
+                        <Text style={styles.cardSyllabus}>
+                          {item.syllabusId?.name || 'Syllabus'}
+                        </Text>
+                      </View>
                     </View>
                   </View>
-                </View>
 
-                {/* Score Circle */}
-                <View 
-                  style={[
-                    styles.scoreCircle,
-                    { borderColor: getPerformanceColor(item.percentage) }
-                  ]}
-                >
-                  <Text 
-                    style={[
-                      styles.scoreText,
-                      { color: getPerformanceColor(item.percentage) }
-                    ]}
-                  >
-                    {item.percentage}%
-                  </Text>
-                </View>
-              </View>
-
-              {/* Details Row */}
-              <View style={styles.detailsRow}>
-                <View style={styles.detailItem}>
-                  <Ionicons name="checkmark-circle" size={14} color="#10B981" />
-                  <Text style={styles.detailText}>{item.score}/{item.totalQuestions}</Text>
-                </View>
-                <View style={styles.detailItem}>
-                  <Ionicons name="time-outline" size={14} color="#6B7280" />
-                  <Text style={styles.detailText}>{Math.floor(item.timeSpent / 60)}m</Text>
-                </View>
-                <View style={styles.detailItem}>
-                  <Ionicons name="star" size={14} color="#F59E0B" />
-                  <Text style={styles.detailText}>{item.points} pts</Text>
-                </View>
-                <View 
-                  style={[
-                    styles.difficultyBadge, 
-                    { backgroundColor: `${getDifficultyColor(item.difficulty)}15` }
-                  ]}
-                >
-                  <Text 
-                    style={[
-                      styles.difficultyText, 
-                      { color: getDifficultyColor(item.difficulty) }
-                    ]}
-                  >
-                    {item.difficulty}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Bottom Section */}
-              <View style={styles.cardFooter}>
-                <View style={styles.badgesContainer}>
-                  {item.rank && (
-                    <View style={styles.rankBadge}>
-                      <Ionicons name="trophy" size={12} color="#8B5CF6" />
-                      <Text style={styles.rankText}>Rank #{item.rank}</Text>
-                    </View>
-                  )}
+                  {/* Score Circle */}
                   <View 
                     style={[
-                      styles.performanceBadge,
-                      { backgroundColor: `${badge.color}15` }
+                      styles.scoreCircle,
+                      { borderColor: getPerformanceColor(item.percentage) }
                     ]}
                   >
                     <Text 
                       style={[
-                        styles.performanceText,
-                        { color: badge.color }
+                        styles.scoreText,
+                        { color: getPerformanceColor(item.percentage) }
                       ]}
                     >
-                      {badge.text}
+                      {item.percentage}%
                     </Text>
                   </View>
                 </View>
-                <Text style={styles.dateText}>{formatDate(item.createdAt)}</Text>
-              </View>
+
+                {/* Details Row */}
+                <View style={styles.detailsRow}>
+                  <View style={styles.detailItem}>
+                    <View style={styles.detailIconCircle}>
+                      <Ionicons name="checkmark-circle" size={12} color="#10B981" />
+                    </View>
+                    <Text style={styles.detailText}>
+                      {item.score}/{item.totalQuestions}
+                    </Text>
+                  </View>
+                  <View style={styles.detailItem}>
+                    <View style={styles.detailIconCircle}>
+                      <Ionicons name="time-outline" size={12} color="#6B7280" />
+                    </View>
+                    <Text style={styles.detailText}>
+                      {Math.floor(item.timeSpent / 60)}m {item.timeSpent % 60}s
+                    </Text>
+                  </View>
+                  <View style={styles.detailItem}>
+                    <View style={styles.detailIconCircle}>
+                      <Ionicons name="star" size={12} color="#F59E0B" />
+                    </View>
+                    <Text style={styles.detailText}>{item.points} pts</Text>
+                  </View>
+                  <View 
+                    style={[
+                      styles.difficultyBadge, 
+                      { backgroundColor: `${getDifficultyColor(item.difficulty)}15` }
+                    ]}
+                  >
+                    <Text 
+                      style={[
+                        styles.difficultyText, 
+                        { color: getDifficultyColor(item.difficulty) }
+                      ]}
+                    >
+                      {item.difficulty}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Bottom Section */}
+                <View style={styles.cardFooter}>
+                  <View style={styles.badgesContainer}>
+                    <View style={styles.typeBadge}>
+                      <Ionicons 
+                        name={getTypeIcon(item.type) as any} 
+                        size={12} 
+                        color="#4F46E5" 
+                      />
+                      <Text style={styles.typeText}>{item.type}</Text>
+                    </View>
+                    {item.rank && (
+                      <View style={styles.rankBadge}>
+                        <Ionicons name="trophy" size={12} color="#8B5CF6" />
+                        <Text style={styles.rankText}>Rank #{item.rank}</Text>
+                      </View>
+                    )}
+                    <View 
+                      style={[
+                        styles.performanceBadge,
+                        { backgroundColor: `${badge.color}15` }
+                      ]}
+                    >
+                      <Text 
+                        style={[
+                          styles.performanceText,
+                          { color: badge.color }
+                        ]}
+                      >
+                        {badge.text}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.dateContainer}>
+                    <Ionicons name="calendar-outline" size={12} color="#9CA3AF" />
+                    <Text style={styles.dateText}>{formatDate(item.createdAt)}</Text>
+                  </View>
+                </View>
+              </LinearGradient>
             </TouchableOpacity>
           );
         }}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Ionicons name="document-outline" size={64} color="#D1D5DB" />
+            <View style={styles.emptyIconCircle}>
+              <Ionicons name="document-outline" size={64} color="#D1D5DB" />
+            </View>
             <Text style={styles.emptyStateTitle}>No results found</Text>
-            <Text style={styles.emptyStateSubtitle}>Complete a test to see your results</Text>
+            <Text style={styles.emptyStateSubtitle}>
+              {selectedFilter === 'All' 
+                ? 'Complete a test to see your results' 
+                : `No ${selectedFilter} results yet`}
+            </Text>
+            <TouchableOpacity
+              style={styles.emptyButton}
+              onPress={() => navigation.navigate('Syllabus')}
+            >
+              <Text style={styles.emptyButtonText}>Start a Test</Text>
+              <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+            </TouchableOpacity>
           </View>
         }
       />
-
-      {/* Floating Action Button */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => navigation.navigate('Tests')}
-      >
-        <Ionicons name="add" size={28} color="#FFFFFF" />
-      </TouchableOpacity>
     </View>
   );
 };
@@ -345,18 +451,22 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
   header: {
-    backgroundColor: '#FFFFFF',
     paddingTop: 60,
     paddingHorizontal: 24,
     paddingBottom: 24,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
   },
   headerTop: {
     flexDirection: 'row',
@@ -370,19 +480,20 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#111827',
+    color: '#FFFFFF',
     letterSpacing: -0.5,
     marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#6B7280',
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontWeight: '500',
   },
   headerIcon: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -393,11 +504,11 @@ const styles = StyleSheet.create({
   },
   statCard: {
     width: '48%',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     borderRadius: 12,
-    padding: 12,
+    padding: 14,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   statHeader: {
     flexDirection: 'row',
@@ -411,15 +522,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
   },
   statValue: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
+    color: '#FFFFFF',
   },
   statLabel: {
     fontSize: 11,
-    color: '#6B7280',
+    color: 'rgba(255, 255, 255, 0.8)',
     fontWeight: '500',
   },
   filterScrollView: {
@@ -461,26 +573,29 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 24,
-    paddingBottom: 100,
+    paddingTop: 16,
+    paddingBottom: 24,
   },
   resultCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 16,
     marginBottom: 12,
+    overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowRadius: 8,
     elevation: 2,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: '#E5E7EB',
+  },
+  cardGradient: {
+    padding: 16,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   cardHeaderLeft: {
     flexDirection: 'row',
@@ -492,7 +607,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#EEF2FF',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -513,6 +627,7 @@ const styles = StyleSheet.create({
   cardSubject: {
     fontSize: 13,
     color: '#6B7280',
+    fontWeight: '500',
   },
   dot: {
     width: 3,
@@ -524,6 +639,7 @@ const styles = StyleSheet.create({
   cardSyllabus: {
     fontSize: 13,
     color: '#6B7280',
+    fontWeight: '500',
   },
   scoreCircle: {
     width: 56,
@@ -532,6 +648,7 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
   },
   scoreText: {
     fontSize: 16,
@@ -540,21 +657,30 @@ const styles = StyleSheet.create({
   detailsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 12,
+    gap: 10,
+    marginBottom: 14,
   },
   detailItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
+  },
+  detailIconCircle: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   detailText: {
     fontSize: 12,
     color: '#6B7280',
+    fontWeight: '600',
   },
   difficultyBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 8,
   },
   difficultyText: {
@@ -565,7 +691,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 12,
+    paddingTop: 14,
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
   },
@@ -573,11 +699,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flex: 1,
+    flexWrap: 'wrap',
+  },
+  typeBadge: {
+    backgroundColor: '#EEF2FF',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  typeText: {
+    fontSize: 11,
+    color: '#4F46E5',
+    fontWeight: '600',
   },
   rankBadge: {
     backgroundColor: '#F3E8FF',
     borderRadius: 8,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 5,
     flexDirection: 'row',
     alignItems: 'center',
@@ -589,7 +731,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   performanceBadge: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 8,
   },
@@ -597,41 +739,55 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
+  dateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   dateText: {
     fontSize: 12,
     color: '#9CA3AF',
+    fontWeight: '500',
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 80,
   },
+  emptyIconCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
   emptyStateTitle: {
-    fontSize: 16,
-    color: '#9CA3AF',
-    marginTop: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    color: '#6B7280',
+    marginBottom: 8,
+    fontWeight: '700',
   },
   emptyStateSubtitle: {
     fontSize: 14,
-    color: '#D1D5DB',
-    marginTop: 4,
+    color: '#9CA3AF',
+    marginBottom: 24,
+    textAlign: 'center',
   },
-  fab: {
-    position: 'absolute',
-    bottom: 24,
-    right: 24,
-    backgroundColor: '#4F46E5',
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
+  emptyButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#4F46E5',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    backgroundColor: '#4F46E5',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  emptyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
   },
 });
 

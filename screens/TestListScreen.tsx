@@ -44,7 +44,7 @@ interface ApiTest {
   duration: number;
   totalQuestions: number;
   pointsPerQuestion: number;
-  questions: any[]; // Full questions array
+  questions: any[];
   isPremium: boolean;
   isActive: boolean;
   attemptCount: number;
@@ -56,29 +56,6 @@ interface ApiTest {
 interface TestsResponse {
   success: boolean;
   tests: ApiTest[];
-}
-
-interface Subscription {
-  _id: string;
-  syllabusIds: Syllabus[];
-  price: number;
-  discountPercent: number;
-  finalPrice: number;
-  durationDays: number;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-  __v: number;
-}
-
-interface SubsResponse {
-  success: boolean;
-  subscriptions: Subscription[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-  };
 }
 
 interface Test {
@@ -94,127 +71,218 @@ interface Test {
   score?: number;
   type: 'Mock' | 'Practice' | 'Chapter' | 'Previous Year';
   icon: string;
-  testData: ApiTest; // Full test data
+  testData: ApiTest;
 }
+
+// Interface for Result to check attempt status
+interface Result {
+  _id: string;
+  testId: { _id: string; name: string } | string;
+  score: number;
+}
+
 
 const TestListScreen = () => {
   const route = useRoute<any>();
   const syllabusName = route.params?.syllabus || 'JEE';
   const navigation = useNavigation<any>();
   const [selectedFilter, setSelectedFilter] = useState<string>('All');
-  const [syllabi, setSyllabi] = useState<Syllabus[]>([]);
-  const [allowedSyllabusIds, setAllowedSyllabusIds] = useState<string[]>([]);
+  const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
   const [tests, setTests] = useState<Test[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
+  const [currentSyllabusId, setCurrentSyllabusId] = useState<string | null>(null);
 
-  const filters = ['All', 'Mock', 'Practice', 'Chapter', 'Previous Year'];
+  // Base filter types
+  const typeFilters = ['All', 'Mock', 'Practice', 'Chapter', 'Previous Year'];
+
+  // Extract unique chapters from tests
+  const chapterFilters = Array.from(new Set(tests.map(test => test.chapter))).sort();
 
   useEffect(() => {
     loadData();
   }, []);
 
   const loadData = async () => {
-    console.log('Loading test data...');
+    console.log('Loading test data for syllabus:', syllabusName);
     setIsLoading(true);
+    
     try {
-      // Fetch syllabi
-      const syllabiRes = await fetch(`${BASE_URL}/api/syllabus`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      console.log('Syllabi Response status:', syllabiRes.status);
-      const syllabiData: SyllabiResponse = await syllabiRes.json();
-      console.log('Syllabi Response body:', JSON.stringify(syllabiData, null, 2));
-      setSyllabi(syllabiData.syllabi || []);
-
-      // Get user subscription ID
-      const userSubId = await AsyncStorage.getItem('userSubscriptionId');
-      if (!userSubId) {
-        console.log('No subscription found, navigating to Subscription');
-        Alert.alert('Access Required', 'Please subscribe to access tests.', [
-          { text: 'OK', onPress: () => navigation.replace('Subscription') }
+      const userDataString = await AsyncStorage.getItem('user');
+      console.log('User data retrieved');
+      
+      if (!userDataString) {
+        console.log('No user data found');
+        Alert.alert('Error', 'Please login to continue', [
+          { text: 'OK', onPress: () => navigation.replace('Login') }
         ]);
         return;
       }
 
-      // Fetch subscriptions to get user's sub details
-      const subsRes = await fetch(`${BASE_URL}/api/admin/subscriptions`, {
+      const userData = JSON.parse(userDataString);
+      console.log('Parsed user data');
+
+      const userSubscription = userData.user?.subscription;
+      console.log('User subscription status:', userSubscription?.status);
+
+      if (!userSubscription || 
+          userSubscription.status !== 'Active' || 
+          !userSubscription.subscriptionDetails) {
+        console.log('No active subscription or subscription details missing');
+        setHasAccess(false);
+        
+        Alert.alert(
+          'Subscription Required',
+          'Please subscribe to access tests.',
+          [{ text: 'Subscribe Now', onPress: () => navigation.replace('Subscription') }]
+        );
+        
+        setIsLoading(false);
+        return;
+      }
+
+      if (userSubscription.isExpired || 
+          (userSubscription.expiryDate && new Date(userSubscription.expiryDate) < new Date())) {
+        console.log('Subscription has expired');
+        setHasAccess(false);
+        
+        Alert.alert(
+          'Subscription Expired',
+          'Your subscription has expired. Please renew to continue.',
+          [{ text: 'Renew Now', onPress: () => navigation.replace('Subscription') }]
+        );
+        
+        setIsLoading(false);
+        return;
+      }
+
+      const subscriptionDetails = userSubscription.subscriptionDetails;
+      const allowedSyllabusIds = subscriptionDetails.syllabusIds.map((s: any) => s._id);
+      const allowedSyllabusNames = subscriptionDetails.syllabusIds.map((s: any) => s.name);
+      
+      console.log('Allowed syllabus IDs:', allowedSyllabusIds);
+      console.log('Allowed syllabus names:', allowedSyllabusNames);
+
+      const syllabiRes = await fetch(`${BASE_URL}/api/syllabus`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
-      console.log('Subscriptions Response status:', subsRes.status);
-      const subsData: SubsResponse = await subsRes.json();
-      console.log('Subscriptions Response body:', JSON.stringify(subsData, null, 2));
+      
+      console.log('Syllabi Response status:', syllabiRes.status);
+      const syllabiData: SyllabiResponse = await syllabiRes.json();
 
-      if (subsData.success) {
-        const userSub = subsData.subscriptions.find((sub: Subscription) => sub._id === userSubId);
-        if (userSub && userSub.isActive) {
-          const allowedIds = userSub.syllabusIds.map((s: Syllabus) => s._id);
-          setAllowedSyllabusIds(allowedIds);
-          console.log('Allowed syllabus IDs:', allowedIds);
-
-          // Check access for current syllabus
-          const currentSyllabus = syllabiData.syllabi.find((s: Syllabus) => s?.name === syllabusName);
-          if (currentSyllabus && allowedIds.includes(currentSyllabus._id)) {
-            setHasAccess(true);
-            // Fetch tests for this syllabus
-            await fetchTests(currentSyllabus._id);
-          } else {
-            console.log('No access to current syllabus:', syllabusName);
-          }
-        } else {
-          console.log('Invalid or inactive subscription');
-          Alert.alert('Subscription Expired', 'Your subscription is inactive. Please renew.', [
-            { text: 'OK', onPress: () => navigation.replace('Subscription') }
-          ]);
-        }
-      } else {
-        Alert.alert('Error', 'Failed to load subscriptions.');
+      if (!syllabiData.success) {
+        Alert.alert('Error', 'Failed to load syllabus data.');
+        setIsLoading(false);
+        return;
       }
+
+      const currentSyllabus = syllabiData.syllabi.find(
+        (s: Syllabus) => s.name === syllabusName && s.isActive
+      );
+
+      if (!currentSyllabus) {
+        console.log('Current syllabus not found:', syllabusName);
+        Alert.alert('Error', 'Syllabus not found.', [
+          { text: 'OK', onPress: () => navigation.goBack() }
+        ]);
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('Current syllabus:', currentSyllabus.name, currentSyllabus._id);
+
+      if (!allowedSyllabusIds.includes(currentSyllabus._id)) {
+        console.log('User does not have access to this syllabus');
+        setHasAccess(false);
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('User has access, fetching tests...');
+      setHasAccess(true);
+      setCurrentSyllabusId(currentSyllabus._id);
+      await fetchTests(currentSyllabus._id, userData.user?._id || userData.user?.id);
+
     } catch (error) {
       console.error('Load Data Error:', error);
       Alert.alert('Error', 'Network error. Please check your connection.');
-    } finally {
       setIsLoading(false);
     }
   };
 
-  const fetchTests = async (syllabusId: string) => {
+  const fetchTests = async (syllabusId: string, userId?: string) => {
     try {
+      console.log('Fetching tests for syllabus ID:', syllabusId);
+      
+      // First fetch user results if userId is provided
+      let userResultsMap = new Map<string, Result>();
+      if (userId) {
+        try {
+          const resultsRes = await fetch(`${BASE_URL}/api/result?userId=${userId}`);
+          const resultsData = await resultsRes.json();
+          if (resultsData.success && resultsData.results) {
+            resultsData.results.forEach((result: Result) => {
+              const testId = typeof result.testId === 'string' ? result.testId : result.testId?._id;
+              if (testId) {
+                userResultsMap.set(testId, result);
+              }
+            });
+          }
+        } catch (err) {
+          console.error('Error fetching user results:', err);
+        }
+      }
+      
       const response = await fetch(`${BASE_URL}/api/tests?syllabusId=${syllabusId}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
+      
       console.log('Tests Response status:', response.status);
       const testsData: TestsResponse = await response.json();
-      console.log('Tests Response body:', JSON.stringify(testsData, null, 2));
+      console.log('Tests found:', testsData.tests?.length || 0);
 
       if (testsData.success) {
         const mappedTests: Test[] = testsData.tests
           .filter(test => test.isActive)
-          .map(test => ({
-            id: test._id,
-            name: test?.name,
-            chapter: test.subjectId?.name, // Using subject as chapter for display
-            subject: test.subjectId?.name,
-            questions: test.totalQuestions,
-            duration: test.duration,
-            difficulty: test.difficulty as 'Easy' | 'Medium' | 'Hard',
-            points: test.totalQuestions * test.pointsPerQuestion,
-            attempted: false, // For now, assume not attempted; can be fetched later
-            score: undefined,
-            type: test.type as 'Mock' | 'Practice' | 'Chapter' | 'Previous Year',
-            icon: getIconForType(test.type), // Helper to get icon
-            testData: test,
-          }));
+          .map(test => {
+            const result = userResultsMap.get(test._id);
+            return {
+              id: test._id,
+              name: test.name,
+              chapter: test.subjectId?.name || 'General',
+              subject: test.subjectId?.name || 'General',
+              questions: test.totalQuestions,
+              duration: test.duration,
+              difficulty: test.difficulty as 'Easy' | 'Medium' | 'Hard',
+              points: test.totalQuestions * test.pointsPerQuestion,
+              attempted: !!result,
+              score: result?.score,
+              type: test.type as 'Mock' | 'Practice' | 'Chapter' | 'Previous Year',
+              icon: getIconForType(test.type),
+              testData: test,
+            };
+          })
+          .sort((a, b) => {
+            // Sort by attempt status: unattempted first, attempted last
+            if (a.attempted === b.attempted) return 0;
+            return a.attempted ? 1 : -1;
+          });
+        
+        console.log('Mapped tests:', mappedTests.length);
         setTests(mappedTests);
       } else {
+        console.log('Failed to fetch tests:', testsData);
         Alert.alert('Error', 'Failed to fetch tests.');
+        setTests([]);
       }
     } catch (error) {
       console.error('Fetch Tests Error:', error);
-      Alert.alert('Error', 'Network error. Please check your connection.');
+      Alert.alert('Error', 'Network error while fetching tests.');
+      setTests([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -242,21 +310,33 @@ const TestListScreen = () => {
     }
   };
 
-  const filteredTests = selectedFilter === 'All' 
-    ? tests 
-    : tests.filter(test => test.type === selectedFilter);
+  // Modified filtering logic to include chapter filtering
+  const filteredTests = () => {
+    let filtered = tests;
+
+    // Apply type filter
+    if (selectedFilter !== 'All') {
+      filtered = filtered.filter(test => test.type === selectedFilter);
+    }
+
+    // Apply chapter filter
+    if (selectedChapter) {
+      filtered = filtered.filter(test => test.chapter === selectedChapter);
+    }
+
+    return filtered;
+  };
 
   const stats = {
     total: tests.length,
-    completed: 0, // Since no attempted data yet
+    completed: 0,
     pending: tests.length,
     avgScore: 0,
   };
 
-const handleTestSelect = (test: Test) => {
-  navigation.navigate('Test', { test: test.testData });
-};
-
+  const handleTestSelect = (test: Test) => {
+    navigation.navigate('Test', { test: test.testData });
+  };
 
   if (isLoading) {
     return (
@@ -307,7 +387,9 @@ const handleTestSelect = (test: Test) => {
             <Ionicons name="lock-closed-outline" size={48} color="#9CA3AF" />
           </View>
           <Text style={styles.emptyStateTitle}>Subscribe for Access</Text>
-          <Text style={styles.emptyStateSubtitle}>Get {syllabusName} tests with a premium plan</Text>
+          <Text style={styles.emptyStateSubtitle}>
+            Get {syllabusName} tests with a premium plan
+          </Text>
           <TouchableOpacity 
             style={styles.subscribeButton}
             onPress={() => navigation.navigate('Subscription')}
@@ -333,7 +415,9 @@ const handleTestSelect = (test: Test) => {
           
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle}>{syllabusName} Tests</Text>
-            <Text style={styles.headerSubtitle}>{stats.total} tests available</Text>
+            <Text style={styles.headerSubtitle}>
+              {stats.total} {stats.total === 1 ? 'test' : 'tests'} available
+            </Text>
           </View>
 
           <View style={styles.headerStats}>
@@ -349,20 +433,32 @@ const handleTestSelect = (test: Test) => {
         </View>
       </LinearGradient>
 
-      {/* Filter Tabs */}
-      <View style={styles.filterSection}>
+      {/* Access Badge */}
+      <View style={styles.accessBanner}>
+        <View style={styles.accessIconCircle}>
+          <Ionicons name="shield-checkmark" size={16} color="#10B981" />
+        </View>
+        <Text style={styles.accessText}>Premium Access - All tests unlocked</Text>
+      </View>
+
+      {/* Filter Tabs - Type Filters */}
+      {/* <View style={styles.filterSection}>
+        <Text style={styles.filterSectionTitle}>Filter by Type</Text>
         <ScrollView 
           horizontal 
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterContainer}
         >
-          {filters.map((filter) => (
+          {typeFilters.map((filter) => (
             <TouchableOpacity
               key={filter}
-              onPress={() => setSelectedFilter(filter)}
+              onPress={() => {
+                setSelectedFilter(filter);
+                setSelectedChapter(null); // Reset chapter filter when type changes
+              }}
               style={styles.filterButtonWrapper}
             >
-              {selectedFilter === filter ? (
+              {selectedFilter === filter && !selectedChapter ? (
                 <LinearGradient
                   colors={['#5B8DEE', '#7BA7F7']}
                   start={{ x: 0, y: 0 }}
@@ -380,17 +476,77 @@ const handleTestSelect = (test: Test) => {
             </TouchableOpacity>
           ))}
         </ScrollView>
-      </View>
+      </View> */}
+
+      {/* Filter Tabs - Chapter Filters */}
+      {chapterFilters.length > 0 && (
+        <View style={styles.filterSection}>
+          <Text style={styles.filterSectionTitle}>Filter by Chapter</Text>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterContainer}
+          >
+            <TouchableOpacity
+              key="All Chapters"
+              onPress={() => setSelectedChapter(null)}
+              style={styles.filterButtonWrapper}
+            >
+              {!selectedChapter ? (
+                <LinearGradient
+                  colors={['#5B8DEE', '#7BA7F7']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.filterButtonActive}
+                >
+                  <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" />
+                  <Text style={styles.filterButtonTextActive}>All Chapters</Text>
+                </LinearGradient>
+              ) : (
+                <View style={styles.filterButtonInactive}>
+                  <Text style={styles.filterButtonTextInactive}>All Chapters</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            {chapterFilters.map((chapter) => (
+              <TouchableOpacity
+                key={chapter}
+                onPress={() => setSelectedChapter(chapter)}
+                style={styles.filterButtonWrapper}
+              >
+                {selectedChapter === chapter ? (
+                  <LinearGradient
+                    colors={['#5B8DEE', '#7BA7F7']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.filterButtonActive}
+                  >
+                    <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" />
+                    <Text style={styles.filterButtonTextActive}>{chapter}</Text>
+                  </LinearGradient>
+                ) : (
+                  <View style={styles.filterButtonInactive}>
+                    <Text style={styles.filterButtonTextInactive}>{chapter}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
       {/* Tests List */}
       <FlatList
-        data={filteredTests}
+        data={filteredTests()}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
           <TouchableOpacity
-            style={styles.testCard}
+            style={[
+              styles.testCard,
+              item.attempted && { borderColor: '#10B981', borderWidth: 2 }
+            ]}
             onPress={() => handleTestSelect(item)}
             activeOpacity={0.7}
           >
@@ -412,7 +568,7 @@ const handleTestSelect = (test: Test) => {
                 </LinearGradient>
                 <View style={styles.testHeaderText}>
                   <View style={styles.testTitleRow}>
-                    <Text style={styles.testName} numberOfLines={1}>{item?.name}</Text>
+                    <Text style={styles.testName} numberOfLines={1}>{item.name}</Text>
                     {item.attempted && (
                       <View style={styles.attemptedBadge}>
                         <Ionicons name="checkmark-circle" size={18} color="#10B981" />
@@ -489,7 +645,11 @@ const handleTestSelect = (test: Test) => {
               <Ionicons name="document-outline" size={48} color="#9CA3AF" />
             </View>
             <Text style={styles.emptyStateTitle}>No tests found</Text>
-            <Text style={styles.emptyStateSubtitle}>Try selecting a different filter</Text>
+            <Text style={styles.emptyStateSubtitle}>
+              {selectedFilter === 'All' && !selectedChapter
+                ? 'No tests available for this syllabus yet' 
+                : `No ${selectedChapter || selectedFilter} tests available`}
+            </Text>
           </View>
         }
       />
@@ -557,11 +717,39 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.8)',
     fontWeight: '600',
   },
+  accessBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  accessIconCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  accessText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#166534',
+  },
   filterSection: {
     backgroundColor: '#FFFFFF',
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
+  },
+  filterSectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+    paddingHorizontal: 24,
+    marginBottom: 12,
   },
   filterContainer: {
     paddingHorizontal: 24,
@@ -601,6 +789,7 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 24,
     paddingBottom: 20,
+    paddingTop: 16,
   },
   testCard: {
     borderRadius: 16,
@@ -779,12 +968,15 @@ const styles = StyleSheet.create({
   emptyStateSubtitle: {
     fontSize: 14,
     color: '#9CA3AF',
+    textAlign: 'center',
+    paddingHorizontal: 40,
   },
   subscribeButton: {
     backgroundColor: '#5B8DEE',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 10,
+    marginTop: 16,
   },
   subscribeButtonText: {
     color: '#FFFFFF',

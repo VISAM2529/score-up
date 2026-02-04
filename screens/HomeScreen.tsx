@@ -1,100 +1,205 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Image, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Image, Dimensions, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import { useFocusEffect } from '@react-navigation/native';
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width - 40;
 
 const BASE_URL = 'https://scoreup-admin.vercel.app';
 
+interface Result {
+  _id: string;
+  userId: string;
+  syllabusId: { _id: string; name: string };
+  testId: { _id: string; name: string };
+  subjectId: { _id: string; name: string };
+  score: number;
+  totalQuestions: number;
+  percentage: number;
+  points: number;
+  createdAt: string;
+  timeSpent: number;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  type: 'Mock' | 'Practice' | 'Chapter' | 'Previous Year';
+}
+
 const HomeScreen = () => {
   const navigation = useNavigation<any>();
   const [userName, setUserName] = useState('User');
   const [activeIndex, setActiveIndex] = useState(0);
-  const [activeBottomIndex, setActiveBottomIndex] = useState(0);
   const [exams, setExams] = useState<string[]>([]);
   const [subscribedExams, setSubscribedExams] = useState<string[]>([]);
+  const [recentTests, setRecentTests] = useState<any[]>([]);
+  const [performanceStats, setPerformanceStats] = useState({
+    accuracy: 0,
+    totalTests: 0,
+    rank: 0,
+    averageScore: 0
+  });
+  const [isLoading, setIsLoading] = useState(true);
   const scrollViewRef = useRef<ScrollView>(null);
-  const bottomScrollViewRef = useRef<ScrollView>(null);
-
+  useFocusEffect(
+  React.useCallback(() => {
+    // Reload data when screen comes into focus
+    fetchAllData(); // or your data fetching function
+  }, [])
+);
   // College images data
   const collegeImages = [
-    { id: 1, image: require('../assets/college1.jpg'), title: 'Top Engineering College', subtitle: 'Your Dream Awaits' },
-    { id: 2, image: require('../assets/college2.jpg'), title: 'Premier Institution', subtitle: 'Excellence in Education' },
-    { id: 3, image: require('../assets/college3.jpg'), title: 'Leading University', subtitle: 'Build Your Future' },
-    { id: 4, image: require('../assets/college4.jpg'), title: 'Best Campus Life', subtitle: 'Your Success Story' },
+    { id: 1, image: require('../assets/scoreupBanner.png') },
+    // { id: 2, image: require('../assets/college2.jpg'), title: 'Premier Institution', subtitle: 'Excellence in Education' },
+    // { id: 3, image: require('../assets/college3.jpg'), title: 'Leading University', subtitle: 'Build Your Future' },
+    // { id: 4, image: require('../assets/college4.jpg'), title: 'Best Campus Life', subtitle: 'Your Success Story' },
   ];
 
-  // Bottom banner images
-  const bottomBanners = [
-    { id: 1, image: require('../assets/college1.jpg'), title: 'Achieve Your Goals', subtitle: 'Start Your Journey Today' },
-    { id: 2, image: require('../assets/college2.jpg'), title: 'Excellence Awaits', subtitle: 'Join Top Performers' },
-    { id: 3, image: require('../assets/college3.jpg'), title: 'Your Success Path', subtitle: 'Best Learning Experience' },
-    { id: 4, image: require('../assets/college4.jpg'), title: 'Dream Big, Achieve More', subtitle: 'Transform Your Future' },
-  ];
-
-  // Fetch user data, all syllabuses, and subscribed syllabuses
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch user data
-        const userDataString = await AsyncStorage.getItem('user');
-        if (userDataString) {
-          const userData = JSON.parse(userDataString);
-          console.log('User data from storage:', userData);
-          
-          // Set user name from the stored data
-          if (userData.user && userData.user.name) {
-            setUserName(userData.user.name);
-          } else if (userData.email) {
-            // Use email username if name is not available
-            const emailUsername = userData.email.split('@')[0];
-            setUserName(emailUsername);
-          }
+    fetchAllData();
+  }, []);
+
+  const fetchAllData = async () => {
+    setIsLoading(true);
+    try {
+      // Fetch user data
+      const userDataString = await AsyncStorage.getItem('user');
+      if (!userDataString) {
+        navigation.replace('Login');
+        return;
+      }
+
+      const userData = JSON.parse(userDataString);
+      console.log('User data from storage:', userData);
+      
+      // Set user name
+      if (userData.user && userData.user.name) {
+        setUserName(userData.user.name);
+      } else if (userData.email) {
+        const emailUsername = userData.email.split('@')[0];
+        setUserName(emailUsername);
+      }
+
+      const userId = userData.user?.id || userData.user?._id;
+
+      // Fetch syllabuses and subscription
+      const syllabiRes = await fetch(`${BASE_URL}/api/syllabus`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const syllabiData = await syllabiRes.json();
+      
+      if (syllabiData.success) {
+        const allExamNames = syllabiData.syllabi.map((s: any) => s.name);
+
+        // Get subscribed syllabuses from user subscription
+        let subscribed: string[] = [];
+        if (userData.user?.subscription?.subscriptionDetails?.syllabusIds) {
+          subscribed = userData.user.subscription.subscriptionDetails.syllabusIds.map(
+            (s: any) => s.name
+          );
+          setSubscribedExams(subscribed);
         }
 
-        // Fetch all syllabuses
-        const syllabiRes = await fetch(`${BASE_URL}/api/syllabus`, {
+        // Sort exams: subscribed first, then others
+        const otherExams = allExamNames.filter((e: string) => !subscribed.includes(e));
+        const sortedExams = [...subscribed, ...otherExams];
+        setExams(sortedExams);
+      }
+
+      // Fetch user's test results
+      if (userId) {
+        const resultsRes = await fetch(`${BASE_URL}/api/result?userId=${userId}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
         });
-        const syllabiData = await syllabiRes.json();
-        if (syllabiData.success) {
-          const allExamNames = syllabiData.syllabi.map(s => s.name);
-
-          // Fetch subscribed syllabuses
-          const subDataString = await AsyncStorage.getItem('userSubscriptionData');
-          let subscribed = [];
-          if (subDataString) {
-            const subData = JSON.parse(subDataString);
-            subscribed = subData.syllabusNames.split(', ');
-            setSubscribedExams(subscribed);
-          }
-
-          // Sort exams: subscribed first, then others
-          const otherExams = allExamNames.filter(e => !subscribed.includes(e));
-          const sortedExams = [...subscribed, ...otherExams];
-          setExams(sortedExams);
-        } else {
-          // Fallback to static if fetch fails
-          const fallbackExams = ['CET', 'JEE', 'NEET'];
-          setExams(fallbackExams);
+        const resultsData = await resultsRes.json();
+        
+        if (resultsData.success && resultsData.results) {
+          processResults(resultsData.results);
         }
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        // Fallback to static on error
-        const fallbackExams = ['CET', 'JEE', 'NEET'];
-        setExams(fallbackExams);
       }
-    };
 
-    fetchData();
-  }, []);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  // Auto scroll top carousel
+  const processResults = (results: Result[]) => {
+    if (results.length === 0) return;
+
+    // Sort by most recent
+    const sortedResults = results.sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    // Get recent 3 unique subjects
+    const subjectMap = new Map();
+    const recentTestsData = [];
+
+    for (const result of sortedResults) {
+      const subjectName = result.subjectId?.name || 'Unknown';
+      if (!subjectMap.has(subjectName) && recentTestsData.length < 3) {
+        subjectMap.set(subjectName, true);
+        recentTestsData.push({
+          id: result._id,
+          subject: subjectName,
+          progress: result.percentage,
+          icon: getSubjectIcon(subjectName),
+          color: getSubjectColor(subjectName),
+          testId: result.testId?._id,
+          syllabusName: result.syllabusId?.name
+        });
+      }
+    }
+
+    setRecentTests(recentTestsData);
+
+    // Calculate performance stats
+    const totalTests = results.length;
+    const totalScore = results.reduce((sum, r) => sum + r.score, 0);
+    const totalQuestions = results.reduce((sum, r) => sum + r.totalQuestions, 0);
+    const accuracy = totalQuestions > 0 ? Math.round((totalScore / totalQuestions) * 100) : 0;
+    const averageScore = totalTests > 0 ? Math.round(
+      results.reduce((sum, r) => sum + r.percentage, 0) / totalTests
+    ) : 0;
+
+    // Calculate approximate rank (based on average score)
+    // This is a simple calculation - you might want to fetch actual rank from backend
+    const rankEstimate = averageScore >= 90 ? 50 : 
+                        averageScore >= 80 ? 100 : 
+                        averageScore >= 70 ? 200 : 
+                        averageScore >= 60 ? 500 : 1000;
+
+    setPerformanceStats({
+      accuracy,
+      totalTests,
+      rank: rankEstimate,
+      averageScore
+    });
+  };
+
+  const getSubjectIcon = (subject: string): any => {
+    const subjectLower = subject.toLowerCase();
+    if (subjectLower.includes('physics')) return 'flask';
+    if (subjectLower.includes('chemistry')) return 'beaker';
+    if (subjectLower.includes('math')) return 'calculator';
+    if (subjectLower.includes('biology')) return 'leaf';
+    return 'book';
+  };
+
+  const getSubjectColor = (subject: string): string => {
+    const subjectLower = subject.toLowerCase();
+    if (subjectLower.includes('physics')) return '#10B981';
+    if (subjectLower.includes('chemistry')) return '#3B82F6';
+    if (subjectLower.includes('math')) return '#8B5CF6';
+    if (subjectLower.includes('biology')) return '#F59E0B';
+    return '#6B7280';
+  };
+
+  // Auto scroll carousel
   useEffect(() => {
     const interval = setInterval(() => {
       setActiveIndex((prevIndex) => {
@@ -110,32 +215,10 @@ const HomeScreen = () => {
     return () => clearInterval(interval);
   }, [collegeImages.length]);
 
-  // Auto scroll bottom carousel
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveBottomIndex((prevIndex) => {
-        const nextIndex = (prevIndex + 1) % bottomBanners.length;
-        bottomScrollViewRef.current?.scrollTo({
-          x: nextIndex * (CARD_WIDTH + 20),
-          animated: true,
-        });
-        return nextIndex;
-      });
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [bottomBanners.length]);
-
   const handleScroll = (event: any) => {
     const scrollPosition = event.nativeEvent.contentOffset.x;
     const index = Math.round(scrollPosition / (CARD_WIDTH + 20));
     setActiveIndex(index);
-  };
-
-  const handleBottomScroll = (event: any) => {
-    const scrollPosition = event.nativeEvent.contentOffset.x;
-    const index = Math.round(scrollPosition / (CARD_WIDTH + 20));
-    setActiveBottomIndex(index);
   };
 
   const handleExamPress = (exam: string) => {
@@ -146,35 +229,35 @@ const HomeScreen = () => {
     }
   };
 
-  const recentPractice = [
-    { 
-      id: 1, 
-      subject: 'Mathematics', 
-      progress: 52, 
-      icon: 'calculator',
-      color: '#8B5CF6'
-    },
-    { 
-      id: 2, 
-      subject: 'Physics', 
-      progress: 62, 
-      icon: 'flask',
-      color: '#10B981'
-    },
-    { 
-      id: 3, 
-      subject: 'Chemistry', 
-      progress: 45, 
-      icon: 'beaker',
-      color: '#3B82F6'
-    },
-  ];
-
-  const performanceStats = {
-    accuracy: 78,
-    totalTests: 100,
-    rank: 142
+  const handleStartPractice = (testData: any) => {
+    // Navigate to test list for that syllabus
+    if (testData.syllabusName && subscribedExams.includes(testData.syllabusName)) {
+      navigation.navigate('Tests', { 
+        screen: 'TestList', 
+        params: { syllabus: testData.syllabusName } 
+      });
+    } else {
+      navigation.navigate('Subscription');
+    }
   };
+
+  const getPerformanceMessage = () => {
+    const avg = performanceStats.averageScore;
+    if (avg >= 90) return "Outstanding performance! You're in the top tier! 🏆";
+    if (avg >= 80) return "Excellent work! Keep up the momentum! 💪";
+    if (avg >= 70) return "Great progress! You're doing well! 🌟";
+    if (avg >= 60) return "Good effort! Keep practicing to improve! 📈";
+    return "Keep practicing! Every test makes you better! 🎯";
+  };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#3B82F6" />
+        <Text style={styles.loadingText}>Loading your dashboard...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -184,15 +267,18 @@ const HomeScreen = () => {
           <View style={styles.headerLeft}>
             <View style={styles.logoContainer}>
               <Image 
-                source={require('../assets/logo.jpg')} 
+                source={require('../assets/adaptive-icon.png')} 
                 style={styles.headerLogoImage}
                 resizeMode="contain"
               />
             </View>
-            <Text style={styles.logoText}>ScoreUp</Text>
+            {/* <Text style={styles.logoText}>ScoreUp</Text> */}
           </View>
-          <TouchableOpacity style={styles.notificationButton}>
-            <Ionicons name="notifications" size={24} color="#3B82F6" />
+          <TouchableOpacity 
+            style={styles.notificationButton}
+            onPress={() => navigation.navigate('Profile')}
+          >
+            <Ionicons name="person-circle" size={24} color="#3B82F6" />
           </TouchableOpacity>
         </View>
       </View>
@@ -227,18 +313,9 @@ const HomeScreen = () => {
                 <Image 
                   source={college.image} 
                   style={styles.bannerImage}
-                  resizeMode="cover"
+                  resizeMode="contain"
                 />
-                <LinearGradient
-                  colors={['rgba(0,0,0,0.7)', 'rgba(0,0,0,0.3)']}
-                  style={styles.bannerOverlay}
-                >
-                  <Text style={styles.bannerTitle}>{college.title}</Text>
-                  <Text style={styles.bannerSubtitle}>{college.subtitle}</Text>
-                  <TouchableOpacity style={styles.startButton}>
-                    <Text style={styles.startButtonText}>Start Now</Text>
-                  </TouchableOpacity>
-                </LinearGradient>
+           
               </View>
             ))}
           </ScrollView>
@@ -258,60 +335,94 @@ const HomeScreen = () => {
         </View>
 
         {/* Exam Tabs */}
-        <View style={styles.examTabsContainer}>
-          <View style={styles.examTabsRow}>
-            {exams.map((exam) => (
-              <TouchableOpacity
-                key={exam}
-                style={[
-                  styles.examTab,
-                  subscribedExams.includes(exam) && styles.examTabActive
-                ]}
-                onPress={() => handleExamPress(exam)}
-              >
-                <Ionicons 
-                  name="school" 
-                  size={18} 
-                  color={subscribedExams.includes(exam) ? '#FFFFFF' : '#9CA3AF'} 
-                />
-                <Text style={[
-                  styles.examTabText,
-                  subscribedExams.includes(exam) && styles.examTabTextActive
-                ]}>
-                  {exam}
-                </Text>
-              </TouchableOpacity>
-            ))}
+        {exams.length > 0 && (
+          <View style={styles.examTabsContainer}>
+            <View style={styles.examTabsRow}>
+              {exams.map((exam) => (
+                <TouchableOpacity
+                  key={exam}
+                  style={[
+                    styles.examTab,
+                    subscribedExams.includes(exam) && styles.examTabActive
+                  ]}
+                  onPress={() => handleExamPress(exam)}
+                >
+                  <Ionicons 
+                    name={subscribedExams.includes(exam) ? "checkmark-circle" : "lock-closed"} 
+                    size={18} 
+                    color={subscribedExams.includes(exam) ? '#FFFFFF' : '#9CA3AF'} 
+                  />
+                  <Text style={[
+                    styles.examTabText,
+                    subscribedExams.includes(exam) && styles.examTabTextActive
+                  ]}>
+                    {exam}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Recently Practice Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="checkmark-circle" size={20} color="#111827" />
-            <Text style={styles.sectionTitle}>Recently Practice</Text>
+            <Ionicons name="time" size={20} color="#111827" />
+            <Text style={styles.sectionTitle}>Recent Tests</Text>
+            <TouchableOpacity 
+              style={styles.viewAllButton}
+              onPress={() => navigation.navigate('Results')}
+            >
+              <Text style={styles.viewAllText}>View All</Text>
+              <Ionicons name="chevron-forward" size={16} color="#3B82F6" />
+            </TouchableOpacity>
           </View>
 
-          {recentPractice.map((item) => (
-            <View key={item.id} style={styles.practiceCard}>
-              <View style={[styles.practiceIcon, { backgroundColor: `${item.color}20` }]}>
-                <Ionicons name={item.icon} size={24} color={item.color} />
-              </View>
-              <View style={styles.practiceInfo}>
-                <Text style={styles.practiceSubject}>{item.subject}</Text>
-                <View style={styles.progressBarContainer}>
-                  <View style={styles.progressBarBg}>
-                    <View style={[styles.progressBarFill, { width: `${item.progress}%` }]} />
-                  </View>
-                  <Text style={styles.progressText}>{item.progress}%</Text>
+          {recentTests.length > 0 ? (
+            recentTests.map((item) => (
+              <View key={item.id} style={styles.practiceCard}>
+                <View style={[styles.practiceIcon, { backgroundColor: `${item.color}20` }]}>
+                  <Ionicons name={item.icon} size={24} color={item.color} />
                 </View>
+                <View style={styles.practiceInfo}>
+                  <Text style={styles.practiceSubject}>{item.subject}</Text>
+                  <View style={styles.progressBarContainer}>
+                    <View style={styles.progressBarBg}>
+                      <View 
+                        style={[
+                          styles.progressBarFill, 
+                          { 
+                            width: `${item.progress}%`,
+                            backgroundColor: item.color
+                          }
+                        ]} 
+                      />
+                    </View>
+                    <Text style={styles.progressText}>{item.progress}%</Text>
+                  </View>
+                </View>
+                <TouchableOpacity 
+                  style={[styles.startPracticeButton, { backgroundColor: item.color }]}
+                  onPress={() => handleStartPractice(item)}
+                >
+                  <Text style={styles.startPracticeText}>Practice</Text>
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity style={styles.startPracticeButton}>
-                <Text style={styles.startPracticeText}>Start</Text>
+            ))
+          ) : (
+            <View style={styles.emptyStateCard}>
+              <Ionicons name="document-text-outline" size={48} color="#9CA3AF" />
+              <Text style={styles.emptyStateText}>No tests taken yet</Text>
+              <TouchableOpacity 
+                style={styles.emptyStateButton}
+                onPress={() => navigation.navigate('Tests')}
+              >
+                <Text style={styles.emptyStateButtonText}>Start Your First Test</Text>
               </TouchableOpacity>
             </View>
-          ))}
+          )}
         </View>
+
         {/* Performance Summary Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -322,37 +433,74 @@ const HomeScreen = () => {
           <View style={styles.performanceGrid}>
             {/* Accuracy Card */}
             <View style={styles.performanceCard}>
-              <View style={styles.performanceIconCircle}>
+              <View style={[styles.performanceIconCircle, { backgroundColor: '#DBEAFE' }]}>
                 <Ionicons name="target" size={24} color="#3B82F6" />
               </View>
-              <Text style={styles.performanceValue}>{performanceStats.accuracy} %</Text>
+              <Text style={styles.performanceValue}>{performanceStats.accuracy}%</Text>
               <Text style={styles.performanceLabel}>Accuracy</Text>
             </View>
 
             {/* Total Tests Card */}
             <View style={styles.performanceCard}>
-              <View style={styles.performanceIconCircle}>
+              <View style={[styles.performanceIconCircle, { backgroundColor: '#FEF3C7' }]}>
                 <Ionicons name="document-text" size={24} color="#F59E0B" />
               </View>
               <Text style={styles.performanceValue}>{performanceStats.totalTests}</Text>
-              <Text style={styles.performanceLabel}>Total Test</Text>
+              <Text style={styles.performanceLabel}>Total Tests</Text>
             </View>
 
-            {/* Rank Card */}
+            {/* Avg Score Card */}
             <View style={styles.performanceCard}>
-              <View style={styles.performanceIconCircle}>
-                <Ionicons name="medal" size={24} color="#10B981" />
+              <View style={[styles.performanceIconCircle, { backgroundColor: '#D1FAE5' }]}>
+                <Ionicons name="trending-up" size={24} color="#10B981" />
               </View>
-              <Text style={styles.performanceValue}>#{performanceStats.rank}</Text>
-              <Text style={styles.performanceLabel}>Rank</Text>
+              <Text style={styles.performanceValue}>{performanceStats.averageScore}%</Text>
+              <Text style={styles.performanceLabel}>Avg Score</Text>
             </View>
           </View>
 
           {/* Performance Message */}
-          <View style={styles.performanceMessage}>
-            <Text style={styles.performanceMessageText}>
-              You've outperforming 85% of Learners :)
-            </Text>
+          {performanceStats.totalTests > 0 && (
+            <View style={styles.performanceMessage}>
+              <Text style={styles.performanceMessageText}>
+                {getPerformanceMessage()}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Quick Actions */}
+        <View style={styles.section}>
+          <View style={styles.quickActionsGrid}>
+            <TouchableOpacity 
+              style={styles.quickActionCard}
+              onPress={() => navigation.navigate('Tests')}
+            >
+              <View style={[styles.quickActionIcon, { backgroundColor: '#EEF2FF' }]}>
+                <Ionicons name="play-circle" size={28} color="#5B8DEE" />
+              </View>
+              <Text style={styles.quickActionText}>Start Test</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.quickActionCard}
+              onPress={() => navigation.navigate('Results')}
+            >
+              <View style={[styles.quickActionIcon, { backgroundColor: '#FEF3C7' }]}>
+                <Ionicons name="stats-chart" size={28} color="#F59E0B" />
+              </View>
+              <Text style={styles.quickActionText}>My Results</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.quickActionCard}
+              onPress={() => navigation.navigate('Subscription')}
+            >
+              <View style={[styles.quickActionIcon, { backgroundColor: '#D1FAE5' }]}>
+                <Ionicons name="star" size={28} color="#10B981" />
+              </View>
+              <Text style={styles.quickActionText}>Premium</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -367,6 +515,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8F9FA',
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: '#F8F9FA',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
   },
   scrollView: {
     flex: 1,
@@ -399,7 +559,7 @@ const styles = StyleSheet.create({
   headerLogoImage: {
     width: 40,
     height: 40,
-    borderRadius: 8,
+
   },
   logoText: {
     fontSize: 20,
@@ -448,7 +608,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     height: 180,
     width: CARD_WIDTH,
-    backgroundColor: '#1F2937',
+    backgroundColor: '#ffffff',
   },
   bannerImage: {
     width: '100%',
@@ -508,6 +668,7 @@ const styles = StyleSheet.create({
   },
   examTabsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
   },
   examTab: {
@@ -549,6 +710,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#111827',
+    flex: 1,
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  viewAllText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#3B82F6',
   },
 
   // Practice Cards
@@ -559,8 +731,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 2,
-    borderColor: '#3B82F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   practiceIcon: {
     width: 48,
@@ -593,7 +765,6 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#3B82F6',
     borderRadius: 3,
   },
   progressText: {
@@ -603,13 +774,39 @@ const styles = StyleSheet.create({
     minWidth: 35,
   },
   startPracticeButton: {
-    backgroundColor: '#3B82F6',
     paddingHorizontal: 20,
     paddingVertical: 8,
     borderRadius: 8,
     marginLeft: 8,
   },
   startPracticeText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
+  // Empty State
+  emptyStateCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  emptyStateText: {
+    fontSize: 15,
+    color: '#6B7280',
+    marginTop: 12,
+    marginBottom: 16,
+  },
+  emptyStateButton: {
+    backgroundColor: '#3B82F6',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  emptyStateButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
@@ -634,7 +831,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
@@ -660,6 +856,35 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#92400E',
     fontWeight: '600',
+    textAlign: 'center',
+  },
+
+  // Quick Actions
+  quickActionsGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  quickActionCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  quickActionIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  quickActionText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#374151',
     textAlign: 'center',
   },
 });

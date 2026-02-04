@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, memo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Modal, Alert, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import RenderHtml from 'react-native-render-html';
-import { useWindowDimensions } from 'react-native';
+import { WebView } from 'react-native-webview';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BASE_URL = 'https://scoreup-admin.vercel.app';
@@ -67,53 +66,130 @@ interface Question {
   subject: string;
   topic: string;
 }
-interface StoredUserData {
-  email: string;
-  token: string | null;
-  user: {
-    id: string;
-    email: string;
-    name: string;
-    isNewUser: boolean;
+
+// Optimized MathJax WebView with caching
+const MathWebView = memo(({ html, isSelected = false, type = 'option' }: { 
+  html: string; 
+  isSelected?: boolean;
+  type?: 'question' | 'option';
+}) => {
+  const [height, setHeight] = useState(type === 'question' ? 80 : 60);
+  
+  const mathJaxHtml = useMemo(() => `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+        <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+        <script>
+          window.MathJax = {
+            tex: {
+              inlineMath: [['\\\\(', '\\\\)']],
+              displayMath: [['\\\\[', '\\\\]']],
+              processEscapes: true
+            },
+            svg: { fontCache: 'global' },
+            startup: {
+              ready: () => {
+                MathJax.startup.defaultReady();
+                MathJax.startup.promise.then(() => {
+                  setTimeout(() => {
+                    window.ReactNativeWebView.postMessage(JSON.stringify({
+                      height: document.body.scrollHeight
+                    }));
+                  }, 100);
+                });
+              }
+            }
+          };
+        </script>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: ${type === 'question' ? '16px' : '15px'};
+            color: ${isSelected ? '#111827' : '#374151'};
+            font-weight: ${type === 'question' ? '600' : isSelected ? '600' : '500'};
+            line-height: 1.6;
+            padding: 4px;
+            overflow-x: hidden;
+            word-wrap: break-word;
+          }
+          p { margin: 0; padding: 0; }
+          img { max-width: 100%; height: auto; border-radius: 8px; margin: 8px 0; }
+          sub { font-size: 0.8em; vertical-align: sub; }
+          sup { font-size: 0.8em; vertical-align: super; }
+        </style>
+      </head>
+      <body>${html}</body>
+    </html>
+  `, [html, isSelected, type]);
+
+  const handleMessage = (event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.height) {
+        setHeight(Math.max(type === 'question' ? 80 : 60, data.height + 20));
+      }
+    } catch (e) {
+      // Ignore parsing errors
+    }
   };
-  loginTime: string;
-}
-interface UserData {
-  id: string;
-  token: string;
-  // Add other properties as needed
-  email?: string;
-  name?: string;
-}
+
+  return (
+    <WebView
+      source={{ html: mathJaxHtml }}
+      style={{ height, backgroundColor: 'transparent' }}
+      scrollEnabled={false}
+      showsVerticalScrollIndicator={false}
+      showsHorizontalScrollIndicator={false}
+      originWhitelist={['*']}
+      javaScriptEnabled={true}
+      domStorageEnabled={true}
+      startInLoadingState={false}
+      androidLayerType="hardware"
+      androidHardwareAccelerationDisabled={false}
+      cacheEnabled={true}
+      mixedContentMode="compatibility"
+      onMessage={handleMessage}
+      onShouldStartLoadWithRequest={() => true}
+    />
+  );
+}, (prevProps, nextProps) => {
+  return prevProps.html === nextProps.html && 
+         prevProps.isSelected === nextProps.isSelected &&
+         prevProps.type === nextProps.type;
+});
+
 const TestScreen = () => {
   const route = useRoute<any>();
   const test: ApiTest = route.params?.test;
   const navigation = useNavigation<any>();
-  const { width } = useWindowDimensions();
 
-
-  // ✅ FIX for nested questions & nested options
   const rawQuestions = Array.isArray(test?.questions?.[0])
     ? test.questions[0]
     : test?.questions || [];
 
-  const questions: Question[] = rawQuestions.map((q: ApiQuestion) => {
-    const rawOptions = Array.isArray(q?.options?.[0])
-      ? q.options[0]
-      : q.options || [];
+  const questions: Question[] = useMemo(() => 
+    rawQuestions.map((q: ApiQuestion) => {
+      const rawOptions = Array.isArray(q?.options?.[0])
+        ? q.options[0]
+        : q.options || [];
 
-    return {
-      id: q._id,
-      text: q.text,
-      subject: q.subjectId?.name ?? "Unknown",
-      topic: q.topic ?? "",
-      options: rawOptions.map((o: any) => ({
-        id: o.id || o._id,
-        text: o.text,
-        isCorrect: o.isCorrect,
-      })),
-    };
-  });
+      return {
+        id: q._id,
+        text: q.text,
+        subject: q.subjectId?.name ?? "Unknown",
+        topic: q.topic ?? "",
+        options: rawOptions.map((o: any) => ({
+          id: o.id || o._id,
+          text: o.text,
+          isCorrect: o.isCorrect,
+        })),
+      };
+    }), [rawQuestions]
+  );
 
   const [selectedAnswers, setSelectedAnswers] = useState<{ [key: string]: string }>({});
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -163,126 +239,103 @@ const TestScreen = () => {
     setMarkedForReview(newMarked);
   };
 
- const submitTest = async () => {
-  setIsSubmitting(true);
-  
-  try {
-    let score = 0;
-    const answersArray: Array<{
-      questionId: string;
-      selectedOptionId: string | null;
-      isCorrect: boolean;
-    }> = [];
+  const submitTest = async () => {
+    setIsSubmitting(true);
+    
+    try {
+      let score = 0;
+      const answersArray: Array<{
+        questionId: string;
+        selectedOptionId: string | null;
+        isCorrect: boolean;
+      }> = [];
 
-    // Calculate score and prepare answers array
-    questions.forEach((q) => {
-      const selected = selectedAnswers[q.id];
-      const isCorrect = selected && q.options.find(o => o.id === selected)?.isCorrect || false;
+      questions.forEach((q) => {
+        const selected = selectedAnswers[q.id];
+        const isCorrect = selected && q.options.find(o => o.id === selected)?.isCorrect || false;
+        
+        if (isCorrect) {
+          score++;
+        }
+
+        answersArray.push({
+          questionId: q.id,
+          selectedOptionId: selected || null,
+          isCorrect
+        });
+      });
+
+      const percentage = Math.round((score / questions.length) * 100);
+      const points = score * test.pointsPerQuestion;
+      const timeSpentInSeconds = (test.duration * 60) - timeRemaining;
+
+      const userDataString = await AsyncStorage.getItem('user');
       
-      if (isCorrect) {
-        score++;
+      if (!userDataString) {
+        Alert.alert('Error', 'Please login again');
+        setIsSubmitting(false);
+        return;
       }
 
-      answersArray.push({
-        questionId: q.id,
-        selectedOptionId: selected || null,
-        isCorrect
+      const userData = JSON.parse(userDataString);
+      const userId = userData.user?.id;
+      
+      if (!userId) {
+        Alert.alert('Error', 'User ID not found. Please login again.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const token = userData.token;
+
+      const requestBody = {
+        userId: userId,
+        testId: test._id,
+        score,
+        totalQuestions: questions.length,
+        percentage,
+        points,
+        timeSpent: timeSpentInSeconds,
+        answers: answersArray
+      };
+
+      const response = await fetch(`${BASE_URL}/api/result`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+        body: JSON.stringify(requestBody)
       });
-    });
 
-    const percentage = Math.round((score / questions.length) * 100);
-    const points = score * test.pointsPerQuestion;
-    const timeSpentInSeconds = (test.duration * 60) - timeRemaining;
+      const data = await response.json();
 
-    // Get user data from AsyncStorage
-    const userDataString = await AsyncStorage.getItem('user');
-    console.log("User Data String:", userDataString);
-    
-    if (!userDataString) {
-      Alert.alert('Error', 'Please login again');
+      if (data) {
+        navigation.navigate('My Results', {
+          screen: 'ResultDetail',
+          params: {
+            resultId: data.result._id,
+            score,
+            total: questions.length,
+            percentage,
+            points,
+            syllabus: test.syllabusId.name,
+            testId: test._id,
+            testName: test.name,
+            timeSpent: timeSpentInSeconds
+          }
+        });
+      } else {
+        Alert.alert('Error', data.message || 'Failed to submit test');
+      }
+    } catch (error) {
+      console.error('Submit test error:', error);
+      Alert.alert('Error', 'Failed to submit test. Please try again.');
+    } finally {
       setIsSubmitting(false);
-      return;
+      setShowSubmitModal(false);
     }
-
-    // Parse the user data
-    const userData = JSON.parse(userDataString);
-    
-    // Extract user ID from the nested structure
-    const userId = userData.user?.id;
-    const userEmail = userData.user?.email;
-    
-    console.log("User ID:", userId);
-    console.log("User Email:", userEmail);
-
-    if (!userId) {
-      Alert.alert('Error', 'User ID not found. Please login again.');
-      setIsSubmitting(false);
-      return;
-    }
-
-    // Note: Your token is null in the stored data
-    // You might need to generate a token or use a different authentication method
-    const token = userData.token;
-    
-    if (!token) {
-      console.warn("Warning: Token is null. Using email as fallback authentication.");
-      // If your backend accepts email-based authentication or doesn't require token
-      // Otherwise, you need to fix the login flow to store a valid token
-    }
-
-    const requestBody = {
-      userId: userId,
-      testId: test._id,
-      score,
-      totalQuestions: questions.length,
-      percentage,
-      points,
-      timeSpent: timeSpentInSeconds,
-      answers: answersArray
-    };
-
-    console.log("Request Body:", JSON.stringify(requestBody, null, 2));
-
-    // Submit result to API
-    const response = await fetch(`${BASE_URL}/api/result`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` }), // Only add Authorization if token exists
-      },
-      body: JSON.stringify(requestBody)
-    });
-
-    const data = await response.json();
-    console.log("Response Data:", data);
-
-    if (data) {
-      // Navigate to ResultDetail screen with the saved result ID
-      navigation.navigate('My Results', {
-        screen: 'ResultDetail',
-        params: {
-          resultId: data.result._id,
-          score,
-          total: questions.length,
-          percentage,
-          points,
-          syllabus: test.syllabusId.name,
-          testId: test._id,
-          testName: test.name,
-          timeSpent: timeSpentInSeconds
-        }
-      });
-    } else {
-      Alert.alert('Error', data.message || 'Failed to submit test');
-    }
-  } catch (error) {
-    console.error('Submit test error:', error);
-    Alert.alert('Error', 'Failed to submit test. Please try again.');
-  } finally {
-    setIsSubmitting(false);
-    setShowSubmitModal(false);
-  }
-};
+  };
 
   const currentQuestion = questions[currentQuestionIndex];
   const answeredCount = Object.keys(selectedAnswers).length;
@@ -309,76 +362,6 @@ const TestScreen = () => {
       case 'Biology': return '#EC4899';
       default: return '#6B7280';
     }
-  };
-
-  const htmlBaseStyle = {
-    body: {
-      fontSize: 15,
-      color: '#374151',
-      fontWeight: '500',
-      lineHeight: 22,
-    },
-    p: {
-      margin: 0,
-      padding: 0,
-    },
-    span: {
-      fontSize: 15,
-      color: '#374151',
-    },
-    sub: {
-      fontSize: 12,
-      // verticalAlign: 'sub',
-    },
-    sup: {
-      fontSize: 12,
-      // verticalAlign: 'super',
-    },
-    strong: {
-      fontWeight: '700',
-    },
-    em: {
-      fontStyle: 'italic',
-    },
-  };
-
-  const htmlSelectedStyle = {
-    ...htmlBaseStyle,
-    body: {
-      ...htmlBaseStyle.body,
-      color: '#111827',
-      fontWeight: '600',
-    },
-    span: {
-      ...htmlBaseStyle.span,
-      color: '#111827',
-      fontWeight: '600',
-    },
-  };
-
-  const htmlQuestionStyle = {
-    body: {
-      fontSize: 16,
-      color: '#111827',
-      fontWeight: '600',
-      lineHeight: 24,
-    },
-    p: {
-      margin: 0,
-      padding: 0,
-    },
-    span: {
-      fontSize: 16,
-      color: '#111827',
-    },
-    sub: {
-      fontSize: 13,
-      // verticalAlign: 'sub',
-    },
-    sup: {
-      fontSize: 13,
-      // verticalAlign: 'super',
-    },
   };
 
   const cleanHtmlContent = (html: string) => {
@@ -477,11 +460,9 @@ const TestScreen = () => {
               <View style={styles.questionTextContainer}>
                 <Text style={styles.questionNumber}>Q{currentQuestionIndex + 1}. </Text>
                 <View style={{ flex: 1 }}>
-                  <RenderHtml
-                    contentWidth={width - 120}
-                    source={{ html: cleanHtmlContent(currentQuestion.text) }}
-                    tagsStyles={htmlQuestionStyle}
-                    enableExperimentalMarginCollapsing={true}
+                  <MathWebView 
+                    html={cleanHtmlContent(currentQuestion.text)} 
+                    type="question"
                   />
                 </View>
               </View>
@@ -528,11 +509,10 @@ const TestScreen = () => {
                           {option.id.toUpperCase()}.
                         </Text>
                         <View style={{ flex: 1 }}>
-                          <RenderHtml
-                            contentWidth={width - 180}
-                            source={{ html: cleanHtmlContent(option.text) }}
-                            tagsStyles={htmlSelectedStyle}
-                            enableExperimentalMarginCollapsing={true}
+                          <MathWebView 
+                            html={cleanHtmlContent(option.text)} 
+                            isSelected={true}
+                            type="option"
                           />
                         </View>
                       </LinearGradient>
@@ -543,11 +523,10 @@ const TestScreen = () => {
                           {option.id.toUpperCase()}.
                         </Text>
                         <View style={{ flex: 1 }}>
-                          <RenderHtml
-                            contentWidth={width - 180}
-                            source={{ html: cleanHtmlContent(option.text) }}
-                            tagsStyles={htmlBaseStyle}
-                            enableExperimentalMarginCollapsing={true}
+                          <MathWebView 
+                            html={cleanHtmlContent(option.text)} 
+                            isSelected={false}
+                            type="option"
                           />
                         </View>
                       </View>
@@ -575,7 +554,7 @@ const TestScreen = () => {
         )}
       </ScrollView>
 
-      {/* Bottom Navigation - Compact with Arrows */}
+      {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity
           style={[
@@ -624,7 +603,7 @@ const TestScreen = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Submit Confirmation Modal */}
+      {/* Submit Modal */}
       <Modal
         visible={showSubmitModal}
         transparent
