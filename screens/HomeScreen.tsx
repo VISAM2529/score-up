@@ -42,17 +42,16 @@ const HomeScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const scrollViewRef = useRef<ScrollView>(null);
   useFocusEffect(
-  React.useCallback(() => {
-    // Reload data when screen comes into focus
-    fetchAllData(); // or your data fetching function
-  }, [])
-);
+    React.useCallback(() => {
+      // Reload data when screen comes into focus
+      fetchAllData(); // or your data fetching function
+    }, [])
+  );
   // College images data
   const collegeImages = [
     { id: 1, image: require('../assets/scoreupBanner.png') },
-    // { id: 2, image: require('../assets/college2.jpg'), title: 'Premier Institution', subtitle: 'Excellence in Education' },
-    // { id: 3, image: require('../assets/college3.jpg'), title: 'Leading University', subtitle: 'Build Your Future' },
-    // { id: 4, image: require('../assets/college4.jpg'), title: 'Best Campus Life', subtitle: 'Your Success Story' },
+    { id: 2, image: require('../assets/Banner2.jpeg') },
+    { id: 3, image: require('../assets/Banner3.jpeg') },
   ];
 
   useEffect(() => {
@@ -71,7 +70,7 @@ const HomeScreen = () => {
 
       const userData = JSON.parse(userDataString);
       console.log('User data from storage:', userData);
-      
+
       // Set user name
       if (userData.user && userData.user.name) {
         setUserName(userData.user.name);
@@ -88,7 +87,7 @@ const HomeScreen = () => {
         headers: { 'Content-Type': 'application/json' },
       });
       const syllabiData = await syllabiRes.json();
-      
+
       if (syllabiData.success) {
         const allExamNames = syllabiData.syllabi.map((s: any) => s.name);
 
@@ -114,7 +113,7 @@ const HomeScreen = () => {
           headers: { 'Content-Type': 'application/json' },
         });
         const resultsData = await resultsRes.json();
-        
+
         if (resultsData.success && resultsData.results) {
           processResults(resultsData.results);
         }
@@ -131,7 +130,7 @@ const HomeScreen = () => {
     if (results.length === 0) return;
 
     // Sort by most recent
-    const sortedResults = results.sort((a, b) => 
+    const sortedResults = results.sort((a, b) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 
@@ -168,10 +167,10 @@ const HomeScreen = () => {
 
     // Calculate approximate rank (based on average score)
     // This is a simple calculation - you might want to fetch actual rank from backend
-    const rankEstimate = averageScore >= 90 ? 50 : 
-                        averageScore >= 80 ? 100 : 
-                        averageScore >= 70 ? 200 : 
-                        averageScore >= 60 ? 500 : 1000;
+    const rankEstimate = averageScore >= 90 ? 50 :
+      averageScore >= 80 ? 100 :
+        averageScore >= 70 ? 200 :
+          averageScore >= 60 ? 500 : 1000;
 
     setPerformanceStats({
       accuracy,
@@ -232,9 +231,9 @@ const HomeScreen = () => {
   const handleStartPractice = (testData: any) => {
     // Navigate to test list for that syllabus
     if (testData.syllabusName && subscribedExams.includes(testData.syllabusName)) {
-      navigation.navigate('Tests', { 
-        screen: 'TestList', 
-        params: { syllabus: testData.syllabusName } 
+      navigation.navigate('Tests', {
+        screen: 'TestList',
+        params: { syllabus: testData.syllabusName }
       });
     } else {
       navigation.navigate('Subscription');
@@ -266,15 +265,15 @@ const HomeScreen = () => {
         <View style={styles.headerTop}>
           <View style={styles.headerLeft}>
             <View style={styles.logoContainer}>
-              <Image 
-                source={require('../assets/adaptive-icon.png')} 
+              <Image
+                source={require('../assets/adaptive-icon.png')}
                 style={styles.headerLogoImage}
                 resizeMode="contain"
               />
             </View>
             {/* <Text style={styles.logoText}>ScoreUp</Text> */}
           </View>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.notificationButton}
             onPress={() => navigation.navigate('Profile')}
           >
@@ -284,7 +283,7 @@ const HomeScreen = () => {
       </View>
 
       {/* Scrollable Content */}
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
@@ -310,16 +309,16 @@ const HomeScreen = () => {
           >
             {collegeImages.map((college, index) => (
               <View key={college.id} style={[styles.bannerCard, { marginLeft: index === 0 ? 20 : 0 }]}>
-                <Image 
-                  source={college.image} 
+                <Image
+                  source={college.image}
                   style={styles.bannerImage}
                   resizeMode="contain"
                 />
-           
+
               </View>
             ))}
           </ScrollView>
-          
+
           {/* Carousel Indicators */}
           <View style={styles.carouselIndicators}>
             {collegeImages.map((_, index) => (
@@ -347,10 +346,10 @@ const HomeScreen = () => {
                   ]}
                   onPress={() => handleExamPress(exam)}
                 >
-                  <Ionicons 
-                    name={subscribedExams.includes(exam) ? "checkmark-circle" : "lock-closed"} 
-                    size={18} 
-                    color={subscribedExams.includes(exam) ? '#FFFFFF' : '#9CA3AF'} 
+                  <Ionicons
+                    name={subscribedExams.includes(exam) ? "checkmark-circle" : "lock-closed"}
+                    size={18}
+                    color={subscribedExams.includes(exam) ? '#FFFFFF' : '#9CA3AF'}
                   />
                   <Text style={[
                     styles.examTabText,
@@ -369,7 +368,7 @@ const HomeScreen = () => {
           <View style={styles.sectionHeader}>
             <Ionicons name="time" size={20} color="#111827" />
             <Text style={styles.sectionTitle}>Recent Tests</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.viewAllButton}
               onPress={() => navigation.navigate('Results')}
             >
@@ -388,20 +387,20 @@ const HomeScreen = () => {
                   <Text style={styles.practiceSubject}>{item.subject}</Text>
                   <View style={styles.progressBarContainer}>
                     <View style={styles.progressBarBg}>
-                      <View 
+                      <View
                         style={[
-                          styles.progressBarFill, 
-                          { 
+                          styles.progressBarFill,
+                          {
                             width: `${item.progress}%`,
                             backgroundColor: item.color
                           }
-                        ]} 
+                        ]}
                       />
                     </View>
                     <Text style={styles.progressText}>{item.progress}%</Text>
                   </View>
                 </View>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.startPracticeButton, { backgroundColor: item.color }]}
                   onPress={() => handleStartPractice(item)}
                 >
@@ -413,7 +412,7 @@ const HomeScreen = () => {
             <View style={styles.emptyStateCard}>
               <Ionicons name="document-text-outline" size={48} color="#9CA3AF" />
               <Text style={styles.emptyStateText}>No tests taken yet</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.emptyStateButton}
                 onPress={() => navigation.navigate('Tests')}
               >
@@ -434,7 +433,7 @@ const HomeScreen = () => {
             {/* Accuracy Card */}
             <View style={styles.performanceCard}>
               <View style={[styles.performanceIconCircle, { backgroundColor: '#DBEAFE' }]}>
-                <Ionicons name="target" size={24} color="#3B82F6" />
+                <Ionicons name="disc" size={24} color="#3B82F6" />
               </View>
               <Text style={styles.performanceValue}>{performanceStats.accuracy}%</Text>
               <Text style={styles.performanceLabel}>Accuracy</Text>
@@ -472,7 +471,7 @@ const HomeScreen = () => {
         {/* Quick Actions */}
         <View style={styles.section}>
           <View style={styles.quickActionsGrid}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.quickActionCard}
               onPress={() => navigation.navigate('Tests')}
             >
@@ -482,7 +481,7 @@ const HomeScreen = () => {
               <Text style={styles.quickActionText}>Start Test</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.quickActionCard}
               onPress={() => navigation.navigate('Results')}
             >
@@ -492,7 +491,7 @@ const HomeScreen = () => {
               <Text style={styles.quickActionText}>My Results</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.quickActionCard}
               onPress={() => navigation.navigate('Subscription')}
             >
@@ -534,7 +533,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 20,
   },
-  
+
   // Header Styles
   header: {
     backgroundColor: '#FFFFFF',
@@ -574,7 +573,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  
+
   // Greeting Section
   greetingSection: {
     paddingHorizontal: 20,

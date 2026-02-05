@@ -56,14 +56,14 @@
 //   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 //   const [userSubscription, setUserSubscription] = useState<UserSubscription | null>(null);
 //   const navigation = useNavigation<any>();
-  
+
 //   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 //   const currentOrderIdRef = useRef<string | null>(null);
 
 //   useEffect(() => {
 //     fetchUserData();
 //     fetchSubscriptions();
-    
+
 //     return () => {
 //       if (pollingIntervalRef.current) {
 //         clearInterval(pollingIntervalRef.current);
@@ -77,16 +77,16 @@
 //       if (userDataString) {
 //         const userData = JSON.parse(userDataString);
 //         console.log('User data from storage:', userData);
-        
+
 //         // Check if user has an active subscription
 //         if (userData.user?.subscription) {
 //           const sub = userData.user.subscription;
-          
+
 //           // Check if subscription is active and not expired
 //           const isActive = sub.status === 'Active' && 
 //                           sub.expiryDate && 
 //                           new Date(sub.expiryDate) > new Date();
-          
+
 //           if (isActive) {
 //             setUserSubscription(sub);
 //             console.log('Active subscription found:', sub.subscriptionId);
@@ -104,39 +104,39 @@
 //   const pollPaymentStatus = async (orderId: string) => {
 //     try {
 //       console.log('Polling payment status for order:', orderId);
-      
+
 //       const response = await fetch(`${BASE_URL}/api/razorpay/payment-callback?orderId=${orderId}`);
 //       const data = await response.json();
-      
+
 //       console.log('Payment status:', data);
-      
+
 //       if (data.status === 'success') {
 //         if (pollingIntervalRef.current) {
 //           clearInterval(pollingIntervalRef.current);
 //           pollingIntervalRef.current = null;
 //         }
-        
+
 //         await processSuccessfulPayment(data.orderId, data.paymentId, data.signature);
-        
+
 //       } else if (data.status === 'failed') {
 //         if (pollingIntervalRef.current) {
 //           clearInterval(pollingIntervalRef.current);
 //           pollingIntervalRef.current = null;
 //         }
-        
+
 //         setIsProcessingPayment(false);
 //         Alert.alert('Payment Failed', data.reason || 'Something went wrong. Please try again.');
-        
+
 //       } else if (data.status === 'cancelled') {
 //         if (pollingIntervalRef.current) {
 //           clearInterval(pollingIntervalRef.current);
 //           pollingIntervalRef.current = null;
 //         }
-        
+
 //         setIsProcessingPayment(false);
 //         Alert.alert('Payment Cancelled', 'You cancelled the payment.');
 //       }
-      
+
 //     } catch (error) {
 //       console.error('Error polling payment status:', error);
 //     }
@@ -144,11 +144,11 @@
 
 //   const startPolling = (orderId: string) => {
 //     currentOrderIdRef.current = orderId;
-    
+
 //     pollingIntervalRef.current = setInterval(() => {
 //       pollPaymentStatus(orderId);
 //     }, 2000);
-    
+
 //     setTimeout(() => {
 //       if (pollingIntervalRef.current) {
 //         clearInterval(pollingIntervalRef.current);
@@ -167,12 +167,12 @@
 //     }
 
 //     console.log('Processing successful payment...');
-    
+
 //     const isVerified = await verifyPayment(orderId, paymentId, signature);
-    
+
 //     if (isVerified) {
 //       console.log('Payment verified successfully');
-      
+
 //       const updateSuccess = await updateUserSubscription(paymentId, orderId, selectedSubscription);
 
 //       if (updateSuccess) {
@@ -189,7 +189,7 @@
 
 //         await AsyncStorage.setItem('userSubscriptionId', selectedSubscription._id);
 //         await AsyncStorage.setItem('userSubscriptionData', JSON.stringify(subscriptionData));
-        
+
 //         // Update user data in AsyncStorage with new subscription
 //         const userDataString = await AsyncStorage.getItem('user');
 //         if (userDataString) {
@@ -207,10 +207,10 @@
 //           await AsyncStorage.setItem('user', JSON.stringify(userData));
 //           setUserSubscription(userData.user.subscription);
 //         }
-        
+
 //         setShowPaymentModal(false);
 //         setIsProcessingPayment(false);
-        
+
 //         // After updating AsyncStorage in processSuccessfulPayment
 // Alert.alert(
 //   'Payment Successful! 🎉',
@@ -241,7 +241,7 @@
 //   ): Promise<boolean> => {
 //     try {
 //       console.log('=== UPDATING USER SUBSCRIPTION ===');
-      
+
 //       const userDataString = await AsyncStorage.getItem('user');
 //       if (!userDataString) {
 //         console.error('User data not found in AsyncStorage');
@@ -326,7 +326,7 @@
 //       );
 //       return;
 //     }
-    
+
 //     setSelectedSubscription(subscription);
 //     setShowPaymentModal(true);
 //   };
@@ -345,7 +345,7 @@
 //       });
 
 //       const data = await response.json();
-      
+
 //       if (data.success) {
 //         return data.order;
 //       } else {
@@ -387,7 +387,7 @@
 //     try {
 //       const syllabusNames = selectedSubscription?.syllabusIds.map(s => s.name).join(', ') || '';
 //       const durationDays = selectedSubscription?.durationDays || 0;
-      
+
 //       const paymentUrl = `${BASE_URL}/api/razorpay/payment-page?` + 
 //         `orderId=${encodeURIComponent(order.id)}` +
 //         `&amount=${encodeURIComponent(order.amount)}` +
@@ -399,18 +399,18 @@
 //         `&returnUrl=${encodeURIComponent(BASE_URL)}`;
 
 //       console.log('Opening payment URL:', paymentUrl);
-      
+
 //       startPolling(order.id);
-      
+
 //       const result = await WebBrowser.openBrowserAsync(paymentUrl, {
 //         toolbarColor: '#5B8DEE',
 //         controlsColor: '#FFFFFF',
 //         showTitle: true,
 //         dismissButtonStyle: 'close',
 //       });
-      
+
 //       console.log('WebBrowser closed:', result);
-      
+
 //     } catch (error) {
 //       console.error('Error opening Razorpay:', error);
 //       if (pollingIntervalRef.current) {
@@ -541,7 +541,7 @@
 //                 {item.syllabusIds.length} Syllabus{item.syllabusIds.length > 1 ? 'es' : ''}
 //               </Text>
 //             </View>
-            
+
 //             {isSubscribed && expiryDate && (
 //               <View style={styles.subscriptionMetaItem}>
 //                 <View style={[styles.metaIconCircle, { backgroundColor: '#FEF3C7' }]}>
@@ -565,7 +565,7 @@
 //                 </Text>
 //               </View>
 //             </View>
-            
+
 //             {isSubscribed ? (
 //               <View style={styles.activeButton}>
 //                 <Ionicons name="shield-checkmark" size={16} color="#10B981" />
@@ -617,7 +617,7 @@
 //           >
 //             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
 //           </TouchableOpacity>
-          
+
 //           <View style={styles.headerTextContainer}>
 //             <Text style={styles.headerTitle}>Subscriptions</Text>
 //             <Text style={styles.headerSubtitle}>{stats.total} plans available</Text>
@@ -679,7 +679,7 @@
 //                   <Text style={styles.paymentSubtitle}>
 //                     {selectedSubscription.syllabusIds.map(s => s.name).join(', ')}
 //                   </Text>
-                  
+
 //                   <View style={styles.amountContainer}>
 //                     <Text style={styles.amountLabel}>Amount to Pay</Text>
 //                     <Text style={styles.amountValue}>₹{selectedSubscription.price}</Text>
@@ -703,7 +703,7 @@
 
 //                 <View style={styles.paymentMethodSection}>
 //                   <Text style={styles.sectionTitle}>Payment via Razorpay</Text>
-                  
+
 //                   <View style={styles.paymentInfoCard}>
 //                     <Ionicons name="shield-checkmark" size={24} color="#10B981" />
 //                     <Text style={styles.paymentInfoText}>
@@ -711,7 +711,7 @@
 //                     </Text>
 //                   </View>
 
-                 
+
 //                 </View>
 
 //                 <View style={styles.actionButtons}>
@@ -722,7 +722,7 @@
 //                   >
 //                     <Text style={styles.cancelButtonText}>Cancel</Text>
 //                   </TouchableOpacity>
-                  
+
 //                   <TouchableOpacity 
 //                     style={[styles.payButton, isProcessingPayment && styles.payButtonDisabled]}
 //                     onPress={handlePaymentSuccess}
@@ -942,14 +942,14 @@ const SubscriptionScreen = () => {
       if (userDataString) {
         const userData = JSON.parse(userDataString);
         console.log('User data from storage:', userData);
-        
+
         if (userData.user?.subscription) {
           const sub = userData.user.subscription;
-          
-          const isActive = sub.status === 'Active' && 
-                          sub.expiryDate && 
-                          new Date(sub.expiryDate) > new Date();
-          
+
+          const isActive = sub.status === 'Active' &&
+            sub.expiryDate &&
+            new Date(sub.expiryDate) > new Date();
+
           if (isActive) {
             setUserSubscription(sub);
             console.log('Active subscription found:', sub.subscriptionId);
@@ -972,12 +972,12 @@ const SubscriptionScreen = () => {
     }
 
     console.log('Processing successful payment...');
-    
+
     const isVerified = await verifyPayment(orderId, paymentId, signature);
-    
+
     if (isVerified) {
       console.log('Payment verified successfully');
-      
+
       const updateSuccess = await updateUserSubscription(paymentId, orderId, selectedSubscription);
 
       if (updateSuccess) {
@@ -994,7 +994,7 @@ const SubscriptionScreen = () => {
 
         await AsyncStorage.setItem('userSubscriptionId', selectedSubscription._id);
         await AsyncStorage.setItem('userSubscriptionData', JSON.stringify(subscriptionData));
-        
+
         const userDataString = await AsyncStorage.getItem('user');
         if (userDataString) {
           const userData = JSON.parse(userDataString);
@@ -1011,14 +1011,26 @@ const SubscriptionScreen = () => {
           await AsyncStorage.setItem('user', JSON.stringify(userData));
           setUserSubscription(userData.user.subscription);
         }
-        
+
+        // Check if this was the DEMO plan
+        if (selectedSubscription._id === 'demo_plan_001') {
+          const userDataString = await AsyncStorage.getItem('user');
+          if (userDataString) {
+            const userData = JSON.parse(userDataString);
+            const userId = userData.user?.id || userData.user?._id;
+            if (userId) {
+              await AsyncStorage.setItem(`demo_plan_used_${userId}`, 'true');
+            }
+          }
+        }
+
         setShowPaymentModal(false);
         setIsProcessingPayment(false);
-        
+
         Alert.alert(
           'Payment Successful! 🎉',
           `You've subscribed to ${selectedSubscription.syllabusIds.map(s => s.name).join(', ')} for ${selectedSubscription.durationDays} days.\n\nYour subscription is now active!`,
-          [{ 
+          [{
             text: 'OK',
             onPress: () => {
               setSelectedSubscription(null);
@@ -1037,13 +1049,13 @@ const SubscriptionScreen = () => {
   };
 
   const updateUserSubscription = async (
-    paymentId: string, 
-    orderId: string, 
+    paymentId: string,
+    orderId: string,
     subscription: Subscription
   ): Promise<boolean> => {
     try {
       console.log('=== UPDATING USER SUBSCRIPTION ===');
-      
+
       const userDataString = await AsyncStorage.getItem('user');
       if (!userDataString) {
         console.error('User data not found in AsyncStorage');
@@ -1105,8 +1117,59 @@ const SubscriptionScreen = () => {
       const responseData: ApiResponse = await response.json();
 
       if (response.ok && responseData.success) {
-        const activeSubs = responseData.subscriptions.filter(sub => sub.isActive);
-        setSubscriptions(activeSubs);
+        const activeSubs = responseData.subscriptions
+          .filter(sub => sub.isActive)
+          .map(sub => ({
+            ...sub,
+            durationDays: 150 // Override duration to 150 days
+          }));
+
+        // === DEMO PLAN LOGIC ===
+        // Aggregate all unique syllabi from active plans to give full access in DEMO
+        const allSyllabiMap = new Map();
+        activeSubs.forEach(sub => {
+          sub.syllabusIds.forEach(s => allSyllabiMap.set(s._id, s));
+        });
+        const allSyllabi = Array.from(allSyllabiMap.values());
+
+        // Check if user has already used the DEMO plan
+        let hasUsedDemo = false;
+        try {
+          const userDataString = await AsyncStorage.getItem('user');
+          if (userDataString) {
+            const userData = JSON.parse(userDataString);
+            const userId = userData.user?.id || userData.user?._id;
+            if (userId) {
+              const demoFlag = await AsyncStorage.getItem(`demo_plan_used_${userId}`);
+              hasUsedDemo = demoFlag === 'true';
+            }
+          }
+        } catch (e) {
+          console.error('Error checking demo flag:', e);
+        }
+
+        const demoPlan: Subscription = {
+          _id: 'demo_plan_001',
+          syllabusIds: allSyllabi,
+          price: 1,
+          discountPercent: 0,
+          finalPrice: 1,
+          durationDays: 2,
+          isActive: !hasUsedDemo, // Disable if already used (or handle in UI)
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          __v: 0
+        };
+
+        // Only add demo plan if it hasn't been used, OR add it but mark as inactive if used?
+        // Prompt says "used only once". If used, let's hide it or show as inactive.
+        // I will add it to the list. If isActive is false, it might be filtered out by UI if I used the filter above.
+        // But here I am constructing the final list.
+
+        // If hasUsedDemo is true, demoPlan.isActive is false.
+        // If the UI filters by isActive, it won't show. That meets the requirement "used only once".
+
+        setSubscriptions(hasUsedDemo ? activeSubs : [demoPlan, ...activeSubs]);
       } else {
         Alert.alert('Error', 'Failed to fetch subscriptions. Please try again.');
       }
@@ -1127,7 +1190,7 @@ const SubscriptionScreen = () => {
       );
       return;
     }
-    
+
     setSelectedSubscription(subscription);
     setShowPaymentModal(true);
   };
@@ -1146,7 +1209,7 @@ const SubscriptionScreen = () => {
       });
 
       const data = await response.json();
-      
+
       if (data.success) {
         return data.order;
       } else {
@@ -1204,7 +1267,7 @@ const SubscriptionScreen = () => {
 
       // Create Razorpay order
       const order = await createRazorpayOrder(selectedSubscription.price);
-      
+
       // Prepare Razorpay options
       const options = {
         description: `${selectedSubscription.syllabusIds.map(s => s.name).join(', ')} - ${selectedSubscription.durationDays} Days`,
@@ -1234,7 +1297,7 @@ const SubscriptionScreen = () => {
           // Payment failed or cancelled
           console.log('Payment Error:', error);
           setIsProcessingPayment(false);
-          
+
           if (error.code === 2) {
             Alert.alert('Payment Cancelled', 'You cancelled the payment.');
           } else {
@@ -1257,10 +1320,10 @@ const SubscriptionScreen = () => {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
     });
   };
 
@@ -1304,10 +1367,10 @@ const SubscriptionScreen = () => {
               end={{ x: 1, y: 1 }}
               style={styles.subscriptionIconCircle}
             >
-              <Ionicons 
-                name={isSubscribed ? "checkmark-circle" : "card-outline"} 
-                size={24} 
-                color="#FFFFFF" 
+              <Ionicons
+                name={isSubscribed ? "checkmark-circle" : "card-outline"}
+                size={24}
+                color="#FFFFFF"
               />
             </LinearGradient>
             <View style={styles.subscriptionHeaderText}>
@@ -1333,7 +1396,7 @@ const SubscriptionScreen = () => {
                 {item.syllabusIds.length} Syllabus{item.syllabusIds.length > 1 ? 'es' : ''}
               </Text>
             </View>
-            
+
             {isSubscribed && expiryDate && (
               <View style={styles.subscriptionMetaItem}>
                 <View style={[styles.metaIconCircle, { backgroundColor: '#FEF3C7' }]}>
@@ -1357,14 +1420,14 @@ const SubscriptionScreen = () => {
                 </Text>
               </View>
             </View>
-            
+
             {isSubscribed ? (
               <View style={styles.activeButton}>
                 <Ionicons name="shield-checkmark" size={16} color="#10B981" />
                 <Text style={styles.activeButtonText}>Active Plan</Text>
               </View>
             ) : (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.subscribeButton}
                 onPress={() => handleSubscribeClick(item, isSubscribed)}
               >
@@ -1403,13 +1466,13 @@ const SubscriptionScreen = () => {
     <View style={styles.container}>
       <LinearGradient colors={['#5B8DEE', '#5B8DEE']} style={styles.header}>
         <View style={styles.headerRow}>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => navigation.goBack()}
             style={styles.backButton}
           >
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
-          
+
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle}>Subscriptions</Text>
             <Text style={styles.headerSubtitle}>{stats.total} plans available</Text>
@@ -1455,7 +1518,7 @@ const SubscriptionScreen = () => {
                   <Text style={styles.razorpayLogoText}>Razorpay</Text>
                 </View>
               </View>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.closeButton}
                 onPress={handlePaymentCancel}
                 disabled={isProcessingPayment}
@@ -1471,7 +1534,7 @@ const SubscriptionScreen = () => {
                   <Text style={styles.paymentSubtitle}>
                     {selectedSubscription.syllabusIds.map(s => s.name).join(', ')}
                   </Text>
-                  
+
                   <View style={styles.amountContainer}>
                     <Text style={styles.amountLabel}>Amount to Pay</Text>
                     <Text style={styles.amountValue}>₹{selectedSubscription.price}</Text>
@@ -1495,7 +1558,7 @@ const SubscriptionScreen = () => {
 
                 <View style={styles.paymentMethodSection}>
                   <Text style={styles.sectionTitle}>Payment via Razorpay</Text>
-                  
+
                   <View style={styles.paymentInfoCard}>
                     <Ionicons name="shield-checkmark" size={24} color="#10B981" />
                     <Text style={styles.paymentInfoText}>
@@ -1505,15 +1568,15 @@ const SubscriptionScreen = () => {
                 </View>
 
                 <View style={styles.actionButtons}>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[styles.cancelButton, isProcessingPayment && styles.buttonDisabled]}
                     onPress={handlePaymentCancel}
                     disabled={isProcessingPayment}
                   >
                     <Text style={styles.cancelButtonText}>Cancel</Text>
                   </TouchableOpacity>
-                  
-                  <TouchableOpacity 
+
+                  <TouchableOpacity
                     style={[styles.payButton, isProcessingPayment && styles.payButtonDisabled]}
                     onPress={handlePaymentSuccess}
                     disabled={isProcessingPayment}
@@ -1554,13 +1617,13 @@ const styles = StyleSheet.create({
   miniStatValue: { fontSize: 16, fontWeight: '700', color: '#FFFFFF', marginBottom: 2 },
   miniStatLabel: { fontSize: 10, color: 'rgba(255, 255, 255, 0.8)', fontWeight: '600' },
   listContent: { paddingHorizontal: 24, paddingBottom: 20 },
-  subscriptionCard: { 
-    borderRadius: 16, 
-    marginBottom: 14, 
-    marginTop: 14, 
-    overflow: 'hidden', 
-    borderWidth: 1, 
-    borderColor: '#E5E7EB' 
+  subscriptionCard: {
+    borderRadius: 16,
+    marginBottom: 14,
+    marginTop: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E5E7EB'
   },
   subscriptionCardActive: {
     borderWidth: 2,

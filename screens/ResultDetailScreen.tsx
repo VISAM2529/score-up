@@ -28,7 +28,7 @@ interface Question {
 // Question renderer with MathJax
 const QuestionRenderer = ({ html }: { html: string }) => {
   const [height, setHeight] = useState(100);
-  
+
   const mathJaxHtml = `
     <!DOCTYPE html>
     <html>
@@ -146,7 +146,7 @@ const QuestionRenderer = ({ html }: { html: string }) => {
 // Option renderer with MathJax
 const OptionRenderer = ({ html }: { html: string }) => {
   const [height, setHeight] = useState(50);
-  
+
   const mathJaxHtml = `
     <!DOCTYPE html>
     <html>
@@ -264,7 +264,7 @@ const OptionRenderer = ({ html }: { html: string }) => {
 // Explanation renderer with MathJax
 const ExplanationRenderer = ({ html }: { html: string }) => {
   const [height, setHeight] = useState(80);
-  
+
   const mathJaxHtml = `
     <!DOCTYPE html>
     <html>
@@ -382,7 +382,7 @@ const ExplanationRenderer = ({ html }: { html: string }) => {
 // Summary badge renderer with MathJax (smaller)
 const SummaryBadgeRenderer = ({ html, isCorrect }: { html: string; isCorrect: boolean }) => {
   const [height, setHeight] = useState(40);
-  
+
   const mathJaxHtml = `
     <!DOCTYPE html>
     <html>
@@ -510,7 +510,7 @@ const ResultDetailScreen = () => {
     setIsLoading(true);
     try {
       const userDataString = await AsyncStorage.getItem('user');
-      
+
       if (!userDataString) {
         Alert.alert('Error', 'Please login again');
         navigation.goBack();
@@ -534,16 +534,15 @@ const ResultDetailScreen = () => {
           ...(token && { 'Authorization': `Bearer ${token}` }),
         },
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
-        setResultData(data.result);
-        
+        // Map questions and options as before
         const mappedQuestions = data.result.testId.questions.map((q: any, index: number) => {
           const userAnswer = data.result.answers[index]?.selectedOptionId || null;
           const rawOptions = Array.isArray(q?.options?.[0]) ? q.options[0] : q.options || [];
-          
+
           return {
             id: q._id,
             text: q.text,
@@ -558,7 +557,20 @@ const ResultDetailScreen = () => {
             explanation: q.explanation || 'No explanation provided.',
           };
         });
-        
+
+        // Calculate score locally since backend might have stored 0 if submission client lacked isCorrect keys
+        const calculatedScore = mappedQuestions.reduce((acc: number, q: any) => {
+          const correctOpt = q.options.find((o: any) => o.isCorrect);
+          const isUserCorrect = correctOpt && correctOpt.id === q.userAnswer;
+          return isUserCorrect ? acc + 1 : acc;
+        }, 0);
+
+        // Update resultData with the calculated score for display
+        setResultData({
+          ...data.result,
+          score: calculatedScore
+        });
+
         setQuestions(mappedQuestions);
       } else {
         Alert.alert('Error', data.message || 'Failed to fetch result details');
@@ -587,7 +599,7 @@ const ResultDetailScreen = () => {
       <View style={styles.loadingContainer}>
         <Ionicons name="alert-circle-outline" size={64} color="#9CA3AF" />
         <Text style={styles.noDataText}>No questions available</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButtonFallback}
           onPress={() => navigation.goBack()}
         >
@@ -627,13 +639,13 @@ const ResultDetailScreen = () => {
       {/* Fixed Header */}
       <LinearGradient colors={['#5B8DEE', '#5B8DEE']} style={styles.header}>
         <View style={styles.headerRow}>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => navigation.goBack()}
             style={styles.backButton}
           >
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
-          
+
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>Review Answers</Text>
             <Text style={styles.headerSubtitle}>
@@ -658,15 +670,15 @@ const ResultDetailScreen = () => {
             onPress={prevQuestion}
             disabled={currentQuestionIndex === 0}
           >
-            <Ionicons 
-              name="chevron-back" 
-              size={24} 
-              color={currentQuestionIndex === 0 ? 'rgba(255,255,255,0.3)' : '#FFFFFF'} 
+            <Ionicons
+              name="chevron-back"
+              size={24}
+              color={currentQuestionIndex === 0 ? 'rgba(255,255,255,0.3)' : '#FFFFFF'}
             />
           </TouchableOpacity>
 
           <View style={styles.progressBar}>
-            <View 
+            <View
               style={[
                 styles.progressFill,
                 { width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }
@@ -682,17 +694,17 @@ const ResultDetailScreen = () => {
             onPress={nextQuestion}
             disabled={currentQuestionIndex === questions.length - 1}
           >
-            <Ionicons 
-              name="chevron-forward" 
-              size={24} 
-              color={currentQuestionIndex === questions.length - 1 ? 'rgba(255,255,255,0.3)' : '#FFFFFF'} 
+            <Ionicons
+              name="chevron-forward"
+              size={24}
+              color={currentQuestionIndex === questions.length - 1 ? 'rgba(255,255,255,0.3)' : '#FFFFFF'}
             />
           </TouchableOpacity>
         </View>
       </LinearGradient>
 
       {/* Scrollable Content */}
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -738,7 +750,7 @@ const ResultDetailScreen = () => {
               {currentQuestion.options.map((option) => {
                 const isUserAnswer = option.id === currentQuestion.userAnswer;
                 const isCorrectAnswer = option.isCorrect;
-                
+
                 let optionStyle = styles.optionDefault;
                 let iconName: any = 'radio-button-off';
                 let iconColor = '#D1D5DB';
@@ -813,8 +825,8 @@ const ResultDetailScreen = () => {
                       {userSelectedOption.id.toUpperCase()}.
                     </Text>
                     <View style={{ flex: 1 }}>
-                      <SummaryBadgeRenderer 
-                        html={cleanHtmlContent(userSelectedOption.text)} 
+                      <SummaryBadgeRenderer
+                        html={cleanHtmlContent(userSelectedOption.text)}
                         isCorrect={isCorrect}
                       />
                     </View>
@@ -826,7 +838,7 @@ const ResultDetailScreen = () => {
                 )}
               </View>
             </View>
-            
+
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>Correct Answer</Text>
               <View style={styles.summaryBadgeCorrect}>
@@ -835,8 +847,8 @@ const ResultDetailScreen = () => {
                     {correctOption?.id.toUpperCase()}.
                   </Text>
                   <View style={{ flex: 1 }}>
-                    <SummaryBadgeRenderer 
-                      html={cleanHtmlContent(correctOption?.text || '')} 
+                    <SummaryBadgeRenderer
+                      html={cleanHtmlContent(correctOption?.text || '')}
                       isCorrect={true}
                     />
                   </View>

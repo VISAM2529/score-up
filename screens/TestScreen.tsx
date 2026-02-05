@@ -68,13 +68,13 @@ interface Question {
 }
 
 // Optimized MathJax WebView with caching
-const MathWebView = memo(({ html, isSelected = false, type = 'option' }: { 
-  html: string; 
+const MathWebView = memo(({ html, isSelected = false, type = 'option' }: {
+  html: string;
   isSelected?: boolean;
   type?: 'question' | 'option';
 }) => {
   const [height, setHeight] = useState(type === 'question' ? 80 : 60);
-  
+
   const mathJaxHtml = useMemo(() => `
     <!DOCTYPE html>
     <html>
@@ -157,9 +157,9 @@ const MathWebView = memo(({ html, isSelected = false, type = 'option' }: {
     />
   );
 }, (prevProps, nextProps) => {
-  return prevProps.html === nextProps.html && 
-         prevProps.isSelected === nextProps.isSelected &&
-         prevProps.type === nextProps.type;
+  return prevProps.html === nextProps.html &&
+    prevProps.isSelected === nextProps.isSelected &&
+    prevProps.type === nextProps.type;
 });
 
 const TestScreen = () => {
@@ -171,7 +171,7 @@ const TestScreen = () => {
     ? test.questions[0]
     : test?.questions || [];
 
-  const questions: Question[] = useMemo(() => 
+  const questions: Question[] = useMemo(() =>
     rawQuestions.map((q: ApiQuestion) => {
       const rawOptions = Array.isArray(q?.options?.[0])
         ? q.options[0]
@@ -241,7 +241,7 @@ const TestScreen = () => {
 
   const submitTest = async () => {
     setIsSubmitting(true);
-    
+
     try {
       let score = 0;
       const answersArray: Array<{
@@ -253,7 +253,7 @@ const TestScreen = () => {
       questions.forEach((q) => {
         const selected = selectedAnswers[q.id];
         const isCorrect = selected && q.options.find(o => o.id === selected)?.isCorrect || false;
-        
+
         if (isCorrect) {
           score++;
         }
@@ -270,7 +270,7 @@ const TestScreen = () => {
       const timeSpentInSeconds = (test.duration * 60) - timeRemaining;
 
       const userDataString = await AsyncStorage.getItem('user');
-      
+
       if (!userDataString) {
         Alert.alert('Error', 'Please login again');
         setIsSubmitting(false);
@@ -279,7 +279,7 @@ const TestScreen = () => {
 
       const userData = JSON.parse(userDataString);
       const userId = userData.user?.id;
-      
+
       if (!userId) {
         Alert.alert('Error', 'User ID not found. Please login again.');
         setIsSubmitting(false);
@@ -355,7 +355,7 @@ const TestScreen = () => {
   };
 
   const getSubjectColor = (subject: string) => {
-    switch(subject) {
+    switch (subject) {
       case 'Physics': return '#3B82F6';
       case 'Chemistry': return '#8B5CF6';
       case 'Mathematics': return '#10B981';
@@ -377,21 +377,21 @@ const TestScreen = () => {
       {/* Compact Header */}
       <LinearGradient colors={['#5B8DEE', '#5B8DEE']} style={styles.header}>
         <View style={styles.headerRow}>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => navigation.goBack()}
             style={styles.closeButton}
           >
             <Ionicons name="close" size={24} color="#FFFFFF" />
           </TouchableOpacity>
-          
+
           <View style={styles.headerCenter}>
             <Text style={styles.questionCounter}>
               {currentQuestionIndex + 1}/{questions.length}
             </Text>
             <View style={styles.progressBarMini}>
-              <View 
+              <View
                 style={[
-                  styles.progressBarMiniFill, 
+                  styles.progressBarMiniFill,
                   { width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }
                 ]}
               />
@@ -421,20 +421,20 @@ const TestScreen = () => {
       </LinearGradient>
 
       {/* Question Section */}
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         {/* Subject & Topic Badge */}
         <View style={styles.badgesRow}>
-          <View 
+          <View
             style={[
-              styles.subjectBadge, 
+              styles.subjectBadge,
               { backgroundColor: `${getSubjectColor(currentQuestion.subject)}15` }
             ]}
           >
-            <Text 
+            <Text
               style={[
                 styles.subjectBadgeText,
                 { color: getSubjectColor(currentQuestion.subject) }
@@ -460,23 +460,23 @@ const TestScreen = () => {
               <View style={styles.questionTextContainer}>
                 <Text style={styles.questionNumber}>Q{currentQuestionIndex + 1}. </Text>
                 <View style={{ flex: 1 }}>
-                  <MathWebView 
-                    html={cleanHtmlContent(currentQuestion.text)} 
+                  <MathWebView
+                    html={cleanHtmlContent(currentQuestion.text)}
                     type="question"
                   />
                 </View>
               </View>
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => toggleMarkForReview(currentQuestion.id)}
                 style={[
                   styles.bookmarkButton,
                   markedForReview.has(currentQuestion.id) && styles.bookmarkButtonActive
                 ]}
               >
-                <Ionicons 
-                  name={markedForReview.has(currentQuestion.id) ? 'bookmark' : 'bookmark-outline'} 
-                  size={20} 
-                  color={markedForReview.has(currentQuestion.id) ? '#F59E0B' : '#9CA3AF'} 
+                <Ionicons
+                  name={markedForReview.has(currentQuestion.id) ? 'bookmark' : 'bookmark-outline'}
+                  size={20}
+                  color={markedForReview.has(currentQuestion.id) ? '#F59E0B' : '#9CA3AF'}
                 />
               </TouchableOpacity>
             </View>
@@ -509,8 +509,8 @@ const TestScreen = () => {
                           {option.id.toUpperCase()}.
                         </Text>
                         <View style={{ flex: 1 }}>
-                          <MathWebView 
-                            html={cleanHtmlContent(option.text)} 
+                          <MathWebView
+                            html={cleanHtmlContent(option.text)}
                             isSelected={true}
                             type="option"
                           />
@@ -523,8 +523,8 @@ const TestScreen = () => {
                           {option.id.toUpperCase()}.
                         </Text>
                         <View style={{ flex: 1 }}>
-                          <MathWebView 
-                            html={cleanHtmlContent(option.text)} 
+                          <MathWebView
+                            html={cleanHtmlContent(option.text)}
                             isSelected={false}
                             type="option"
                           />
@@ -540,7 +540,7 @@ const TestScreen = () => {
 
         {/* Clear Selection */}
         {selectedAnswers[currentQuestion.id] && (
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => {
               const newAnswers = { ...selectedAnswers };
               delete newAnswers[currentQuestion.id];
@@ -564,10 +564,10 @@ const TestScreen = () => {
           onPress={prevQuestion}
           disabled={currentQuestionIndex === 0}
         >
-          <Ionicons 
-            name="chevron-back" 
-            size={28} 
-            color={currentQuestionIndex === 0 ? '#D1D5DB' : '#5B8DEE'} 
+          <Ionicons
+            name="chevron-back"
+            size={28}
+            color={currentQuestionIndex === 0 ? '#D1D5DB' : '#5B8DEE'}
           />
         </TouchableOpacity>
 
@@ -595,10 +595,10 @@ const TestScreen = () => {
           onPress={nextQuestion}
           disabled={currentQuestionIndex === questions.length - 1}
         >
-          <Ionicons 
-            name="chevron-forward" 
-            size={28} 
-            color={currentQuestionIndex === questions.length - 1 ? '#D1D5DB' : '#5B8DEE'} 
+          <Ionicons
+            name="chevron-forward"
+            size={28}
+            color={currentQuestionIndex === questions.length - 1 ? '#D1D5DB' : '#5B8DEE'}
           />
         </TouchableOpacity>
       </View>
